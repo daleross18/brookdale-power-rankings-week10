@@ -11,7 +11,7 @@
 //
 //  The intro step (newspaper stage): the edition headline as a banner across the top (the same band as the front
 //  page's .fp-banner; at the BAM it drops into that banner's place on the page), the matchup reel in the middle (a pile
-//  of clippings flipped through one per beat, a flash of light on every turn) and eleven photo clippings scattered
+//  of clippings flipped through slowly at first and as a blur by the drop: results, then the games still to play, then round again) and eleven photo clippings scattered
 //  around it. The photos are canvases painted by js/atlas.js from ONE decoded stream. ATLAS.start() is called in the
 //  gate tap; the clippings stay out of sight until the stream has a picture (and for good if it cannot be loaded).
 //  The canvases are released when the BAM is armed (CFG.BAM_ARM seconds before the drop): the photos hold their last
@@ -43,16 +43,19 @@
   var CFG = {
     media: 'media/',
     FLIP_MS: 230,                   // one turn of the reel: the top clipping flips up and over in five held poses
-    MIN_SHOW_MS: 150,               // a matchup stays on top at least this long, even when the reel is catching up after dropped frames
+    MIN_SHOW_MS: 150,               // a matchup stays on top at least this long (or 60% of its own turn, if that is shorter), even when the reel is catching up after dropped frames
     UNDER: 2,                       // clippings waiting in the pile under the top one
 
     // --- jungle.m4a (seconds of song time) ---
     DROP_AT: 31.87,
     SNARE_HITS: [28.24, 28.52, 28.79, 29.05, 29.84, 30.10, 30.35, 30.61, 30.86, 31.12, 31.37, 31.63],
     BARS: [2.26, 4.64, 7.02, 9.40, 11.79, 14.13, 16.48, 18.87, 21.24, 23.62, 26.04],   // riff accents; the last bar ends on the first snare hit
-    CARDS_PER_BAR: 4,               // one matchup per beat of the riff (~0.6 s)
-    BUILD_CARDS: 5,                 // the last matchups are cut on snare hits, spread evenly over the build
-    REEL_MIN_START: 2.2,            // no matchup before the stage has faded in
+    // the reel speeds up all the way to the drop: a turn takes REEL_SLOW seconds at first and REEL_FAST at the end
+    REEL_START: 1.6,                // the first matchup lies on top from the start; the turning begins here (the stage has faded in enough to read it)
+    REEL_SLOW: 0.8, REEL_FAST: 0.03,
+    REEL_CURVE: 1.6,                // > 1: stays slow for longer, then runs away
+    REEL_FAST_REDUCED: 0.3,         // ?reduce: no blur
+    LIGHT_MIN_MS: 300,              // the flash of light of a turn at most this often (the reel turns far faster than that at the end)
     FADE_IN: 2.2,                   // the stage fades in over the first seconds of the song
     BUILD_ZOOM: 0.05,               // how far the stage pushes in over the snare build (0 = off)
     BUILD_JOLT: 1,                  // how hard each snare hit knocks the clippings (degrees, grows through the build; 0 = off)
@@ -182,26 +185,20 @@
   function rng(seed) { var s = seed >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
   /* ======================================================================
-     Reel schedule — computed from CFG so every matchup is on screen before the drop
+     Reel schedule — the times (song seconds) at which the reel turns. It starts slow and ends as a blur: the gap between
+     turns shrinks from REEL_SLOW to REEL_FAST by the drop. Turn q shows matchup q % n: every result, then the
+     matchups still to be played (no scores), then round again from the first for as long as the song allows.
      ====================================================================== */
   function buildSchedule(n) {
-    var hits = CFG.SNARE_HITS, drop = CFG.DROP_AT, h0 = hits[0], i, k;
-    var nb = Math.min(CFG.BUILD_CARDS, n, hits.length);
-    // the build: nb cards spread evenly over [first hit, drop), each snapped to a snare hit
-    var build = [], used = -1;
-    for (k = 0; k < nb; k++) {
-      var ideal = h0 + k * (drop - h0) / nb, best = -1, bd = Infinity;
-      for (i = used + 1; i <= hits.length - (nb - k); i++) { var d = Math.abs(hits[i] - ideal); if (d < bd) { bd = d; best = i; } }
-      used = best; build.push(hits[best]);
+    if (!n) return [];
+    var T0 = CFG.REEL_START, TE = CFG.DROP_AT - 0.04, fast = REDUCED ? CFG.REEL_FAST_REDUCED : CFG.REEL_FAST, out = [0], t = T0;
+    for (;;) {
+      var p = Math.min(1, Math.max(0, (t - T0) / (TE - T0)));
+      var d = CFG.REEL_SLOW * Math.pow(fast / CFG.REEL_SLOW, Math.pow(p, CFG.REEL_CURVE));
+      if (t + d >= TE || out.length > 2000) break;
+      t += d; out.push(Math.round(t * 1000) / 1000);
     }
-    // before the build: one card per beat of the bar grid, counted back from the first snare hit
-    var edges = CFG.BARS.concat([h0]), beats = [];
-    for (i = 0; i < edges.length - 1; i++) for (k = 0; k < CFG.CARDS_PER_BAR; k++) beats.push(edges[i] + (edges[i + 1] - edges[i]) * k / CFG.CARDS_PER_BAR);
-    beats = beats.filter(function (t) { return t >= CFG.REEL_MIN_START; });
-    var m = n - nb, pre = [];
-    if (m <= beats.length) pre = beats.slice(beats.length - m);
-    else for (i = 0; i < m; i++) pre.push(CFG.REEL_MIN_START + (h0 - CFG.REEL_MIN_START) * i / m);   // more matchups than beats: even spacing
-    return pre.concat(build).map(function (t) { return Math.round(t * 1000) / 1000; });
+    return out;
   }
 
   function matchups() {
@@ -210,6 +207,11 @@
     ((B.season && B.season.weeks) || []).forEach(function (w) {
       (w.games || []).forEach(function (g) {
         out.push({ week: w.week, a: { name: names[g[0]] || g[0], pts: g[1] }, b: { name: names[g[3]] || g[3], pts: g[4] } });
+      });
+    });
+    ((B.season && B.season.remaining) || []).forEach(function (w) {          // still to be played: the pairing only
+      (w.games || []).forEach(function (g) {
+        out.push({ week: w.week, ahead: true, a: { name: names[g[0]] || g[0] }, b: { name: names[g[1]] || g[1] } });
       });
     });
     return out;
@@ -256,7 +258,7 @@
   var raf = 0, lastNow = 0;
   var clock = null;                  // drives 'pre' and 'intro'
   var games = [], sched = [], cards = [];
-  var reelIdx = -1, barIdx = 0, hitIdx = 0, lastHitT = -10, nextFlash = 0, lastTurn = -1e9;
+  var reelIdx = -1, barIdx = 0, hitIdx = 0, lastHitT = -10, nextFlash = 0, lastTurn = -1e9, lastLight = -1e9;
   var canvases = [], clipsMade = false;   // the eleven ATLAS canvases (created in the gate tap, released before the drop)
   var geo = { reel: { x: 0, y: 0, w: 0, h: 0 } };   // where the reel lies (px), set by layout()
   var hitFlip = false;
@@ -329,6 +331,19 @@
     var c = h('article', 'ix-card'), inn = h('div', 'ix-card-in'), wk = h('div', 'ix-wk'), wn = h('b', '', String(m.week));
     wn.setAttribute('data-t', String(m.week));                    // data-t: the same lettering again for the two colour plates (css)
     add(wk, document.createTextNode('Week'), wn);
+    function ahead(side) {              // a matchup still to be played: both names the same weight, no score
+      var row = h('div', 'ix-mrow ix-mrow--p'), name = h('div', 'ix-name'), sp = h('span', '', side.name);
+      name.appendChild(sp); name._name = side.name; name._win = false; name._max = 10.6;
+      row.appendChild(name);
+      return row;
+    }
+    if (m.ahead) {
+      add(inn, wk, ahead(m.a), ahead(m.b));
+      c.appendChild(inn);
+      place(c, ((r() * 2 - 1) * 2.8).toFixed(2) + 'deg', ((r() * 2 - 1) * 2.2).toFixed(2) + '%', Math.round((r() * 2 - 1) * 9) + 'px', 0);
+      setSpin(c, r);
+      return c;
+    }
     var tie = m.a.pts === m.b.pts, first = m.a.pts >= m.b.pts ? m.a : m.b, second = first === m.a ? m.b : m.a;
     function line(side, win) {
       var row = h('div', 'ix-mrow ' + (win ? 'ix-mrow--w' : 'ix-mrow--l')), name = h('div', 'ix-name'), sp = h('span', '', side.name);
@@ -340,8 +355,7 @@
     }
     add(inn, wk, line(first, true), line(second, tie));
     c.appendChild(inn);
-    place(c, ((r() * 2 - 1) * 2.8).toFixed(2) + 'deg', ((r() * 2 - 1) * 2.2).toFixed(2) + '%', Math.round((r() * 2 - 1) * 9) + 'px', 199 - i);   // the pile: the next matchup lies under the one on top
-    if (sched[i] >= CFG.SNARE_HITS[0] - 1.3) c._hit = true;         // on the pile during the snare build: its colour plates are kept ready (css .hit)
+    place(c, ((r() * 2 - 1) * 2.8).toFixed(2) + 'deg', ((r() * 2 - 1) * 2.2).toFixed(2) + '%', Math.round((r() * 2 - 1) * 9) + 'px', 0);   // (stacking is set each time it enters the pile: showCard)
     setSpin(c, r);
     return c;
   }
@@ -430,10 +444,6 @@
     });
     var reel = el.reel = h('div', 'ix-reel');
     el.bloom = h('i', 'ix-bloom'); reel.appendChild(el.bloom);
-    var title = el.title = h('article', 'ix-card ix-title'), tin = h('div', 'ix-card-in');
-    add(tin, h('div', 'ix-mast', B.league || ''), h('div', 'ix-ed', (B.edition && B.edition.title) || ''));
-    title.appendChild(tin); place(title, '-1.2deg', '0px', '0px', 200); setSpin(title, rand);
-    reel.appendChild(title);
     var r = rng(4510);
     games.forEach(function (m, k) { var c = buildCard(m, k, r); cards.push(c); reel.appendChild(c); });
     // one wash of light and one flap (the back of a clipping going over) serve every turn: two layers that exist from
@@ -529,14 +539,8 @@
     for (i = 0; i < names.length; i++) {
       n = names[i];
       if (!(n._name in nameEm)) { el.measure.textContent = n._name; nameEm[n._name] = el.measure.offsetWidth / 100; }
-      var max = cu * (n._win ? 13 : 8.4), fit = nameEm[n._name] > 0 ? (widths[i] - 1) / nameEm[n._name] : max;
+      var max = cu * (n._max || (n._win ? 13 : 8.4)), fit = nameEm[n._name] > 0 ? (widths[i] - 1) / nameEm[n._name] : max;
       n.style.fontSize = Math.max(8, Math.min(max, fit)).toFixed(2) + 'px';
-    }
-    // the title card's two lines never overflow it
-    var lines = el.title.querySelectorAll('.ix-mast, .ix-ed');
-    for (i = 0; i < lines.length; i++) {
-      var ln = lines[i]; ln.style.fontSize = '';
-      if (ln.scrollWidth > ln.clientWidth + 1) ln.style.fontSize = (parseFloat(getComputedStyle(ln).fontSize) * ln.clientWidth / ln.scrollWidth * 0.985).toFixed(2) + 'px';
     }
     if (noise) sizeNoise();
   }
@@ -655,7 +659,7 @@
   function sep() {
     if (REDUCED) return;
     hitFlip = !hitFlip;
-    var top = reelIdx >= 0 ? cards[reelIdx] : el.title;   // (the class goes on the card itself, not on the reel: nothing else is restyled)
+    var top = reelIdx >= 0 && cards.length && turnGap(reelIdx) >= 0.2 ? cards[reelIdx % cards.length] : null;   // (the class goes on the card itself, not on the reel: nothing else is restyled; not on a matchup that is gone within a frame or two)
     [el.banner, top].forEach(function (n) { if (!n) return; n.classList.toggle('ha', hitFlip); n.classList.toggle('hb', !hitFlip); });
   }
 
@@ -666,29 +670,43 @@
   function setCard(c, st) {            // st: '' (not on the desk) | 'on' (waiting in the pile) | 'top' | 'lit' (top, just uncovered) | 'out' (being flipped away)
     if (c._st === st) return;
     c._st = st;
-    var base = c === el.title ? 'ix-card ix-title' : c._hit ? 'ix-card hit' : 'ix-card';
+    var base = 'ix-card';
     c.className = base + (st ? ' on' : '') + (st === 'top' || st === 'lit' ? ' top' : '') + (st === 'lit' ? ' lit' : '') + (st === 'out' ? ' out' : '');
   }
-  /** The light and the paper of a turn: a bloom behind the pile, a wash fading off the clipping that has just been
-   *  uncovered, a glint on one of its corners, and the back of the one going over (`from` → `to`, either may be the title). */
-  function flipLight(from, to) {
+  /** Seconds turn q stays on top (to the next turn, or to the drop). */
+  function turnGap(q) { return (q + 1 < sched.length ? sched[q + 1] : CFG.DROP_AT) - sched[q]; }
+  /** The light and the paper of a turn: the back of the one going over (`from`), and — no more often than LIGHT_MIN_MS, the
+   *  reel ends far faster than a light may flash — a bloom behind the pile, a wash fading off the clipping that has just
+   *  been uncovered (`to`) and a glint on one of its corners. ms: how long this turn's paper takes. */
+  function flipLight(from, to, ms) {
     if (REDUCED) return;
-    var b = el.bloom, R = geo.reel, k = b._b = !b._b, ab = k ? ' b' : ' a';
-    b.className = 'ix-bloom' + ab;
-    lieLike(el.lit, to, 0); el.lit.className = 'ix-lit' + ab;          // same stacking as the card, later in the document: just above it
+    var R = geo.reel, k = el.flap._b = !el.flap._b, ab = k ? ' b' : ' a', now = performance.now();
+    from.style.setProperty('--flip-ms', ms + 'ms'); el.flap.style.setProperty('--flip-ms', ms + 'ms');
     lieLike(el.flap, from, 0); el.flap.className = 'ix-flap' + ab;
+    if (now - lastLight < CFG.LIGHT_MIN_MS) return;
+    lastLight = now;
+    var lb = (el.bloom._b = !el.bloom._b) ? ' b' : ' a';             // its own a/b: it does not flash on every turn
+    el.bloom.className = 'ix-bloom' + lb;
+    lieLike(el.lit, to, 0); el.lit.className = 'ix-lit' + lb;          // same stacking as the card, later in the document: just above it
     var sx = Math.random() < 0.5 ? -1 : 1, sy = Math.random() < 0.7 ? -1 : 1;
     popAt(R.x + sx * R.w * (0.26 + Math.random() * 0.2), R.y + sy * R.h * (0.2 + Math.random() * 0.26), Math.min(el.W, el.H) * (0.3 + Math.random() * 0.22), 0.85, true);
   }
-  /** Matchup i on top of the pile (-1: the title card). animate: the one before it is flipped away. */
-  function showCard(i, animate) {
-    var turn = animate && !REDUCED;
-    for (var k = -1; k < cards.length; k++) {
-      var c = k < 0 ? el.title : cards[k];
-      setCard(c, k === i ? (turn ? 'lit' : 'top') : k === i - 1 && turn ? 'out' : k > i && k <= i + CFG.UNDER ? 'on' : '');
+  /** Turn q of the reel on top of the pile (matchup q % n). animate: the one before it is flipped away. */
+  function showCard(q, animate) {
+    var n = cards.length;
+    if (!n) { reelIdx = q; return; }
+    q = Math.max(0, q);
+    var turn = animate && !REDUCED && q > 0, top = q % n, out = turn ? (q - 1) % n : -1, k, j;
+    for (j = 0; j <= CFG.UNDER; j++) {                    // the pile is stacked in turn order: the next matchup lies under the one on top
+      var c = cards[(q + j) % n], z = 4000 - (q + j);
+      if (c._p[3] !== z) { c._p[3] = z; c.style.zIndex = String(z); }
     }
-    if (turn) flipLight(i > 0 ? cards[i - 1] : el.title, i < 0 ? el.title : cards[i]);
-    reelIdx = i;
+    for (k = 0; k < n; k++) {
+      var d = (k - top + n) % n;                          // how many turns from now this matchup comes up
+      setCard(cards[k], k === top ? (turn ? 'lit' : 'top') : k === out ? 'out' : d >= 1 && d <= CFG.UNDER ? 'on' : '');
+    }
+    if (turn) flipLight(cards[out], cards[top], Math.round(clamp(turnGap(q) * 850, 50, CFG.FLIP_MS)));
+    reelIdx = q;
   }
   function countLE(arr, t) { var n = 0; while (n < arr.length && arr[n] <= t) n++; return n; }
 
@@ -808,7 +826,7 @@
     clock = new Clock(P.jungle, at);
     barIdx = countLE(CFG.BARS, at); hitIdx = countLE(CFG.SNARE_HITS, at); nextFlash = at;
     lastHitT = hitIdx ? CFG.SNARE_HITS[hitIdx - 1] : -10;
-    showCard(countLE(sched, at) - 1, false);
+    showCard(Math.max(0, countLE(sched, at) - 1), false);
     if (freeze) { clock.frozen = true; clock.t = at; P.cueJungle(at); }
     else {
       P.playJungle(at, at < 0.5 ? 0.6 : 0.05).then(function (ok) { if (!ok && clock && clock.el === P.jungle) clock.toWall(); });
@@ -840,7 +858,7 @@
     var t = clock.mode === 'media' ? raw - P.latency() : raw;   // what is being heard right now
     // one matchup per turn, never two in a frame: if frames were dropped the reel flips through what it owes (a short
     // turn each) instead of jumping past it, so every matchup is seen
-    if (reelIdx + 1 < sched.length && t >= sched[reelIdx + 1] && now - lastTurn >= CFG.MIN_SHOW_MS) { lastTurn = now; showCard(reelIdx + 1, true); mark('card', reelIdx, t); quiet = false; }
+    if (reelIdx + 1 < sched.length && t >= sched[reelIdx + 1] && now - lastTurn >= Math.min(CFG.MIN_SHOW_MS, turnGap(reelIdx + 1) * 600)) { lastTurn = now; showCard(reelIdx + 1, true); mark('card', reelIdx, t); quiet = false; }
     while (barIdx < CFG.BARS.length && t >= CFG.BARS[barIdx]) { barIdx++; pop(1, true, false); pop(0.9, false, true); pop(0.8, false, false); quiet = false; }
     while (hitIdx < CFG.SNARE_HITS.length && t >= CFG.SNARE_HITS[hitIdx]) {
       quiet = false;
@@ -914,7 +932,7 @@
       armed = 2;
       if (!aimedAt) aimBanner();                          // (normally read long before: tickIntro)
       el.armStage.forEach(delay);
-      cards.concat([el.title]).forEach(function (c) { if (c._st && c._st !== 'out') delay(c); });
+      cards.forEach(function (c) { if (c._st && c._st !== 'out') delay(c); });
       el.root.classList.add('ix-bam-on');
     }
   }
@@ -960,7 +978,7 @@
       f.style.setProperty('--fy', (dy / len * dist).toFixed(0) + 'px');
     }
     el.clipEls.forEach(function (c) { aim(c, c._cx - cx, c._cy - cy, far * c._fd); });
-    cards.concat([el.title]).forEach(function (c) { aim(c, Math.cos(c._fa), Math.sin(c._fa), far * c._fd); });
+    cards.forEach(function (c) { aim(c, Math.cos(c._fa), Math.sin(c._fa), far * c._fd); });
     (el.scraps || []).forEach(function (s) { aim(s, Math.cos(s._a), Math.sin(s._a), far * s._d); });
   }
   function setSpin(f, r) {
@@ -1149,7 +1167,7 @@
         n.inert = true; inerted.push(n);
       });
     } catch (e) { /* ignore */ }
-    showCard(-1, false);                                  // the title card on top of the pile
+    showCard(0, false);                                   // the first matchup on top of the pile
     layout();
     bindSkip();
     P.prepare();
@@ -1170,7 +1188,7 @@
     start: start,
     log: log,
     config: CFG,
-    peek: function (i) { if (el.root && cards.length) showCard(clamp(i | 0, -1, cards.length - 1), true); },
+    peek: function (i) { if (el.root && cards.length) showCard(clamp(i | 0, 0, sched.length - 1), true); },
     schedule: function () { return (sched.length ? sched : buildSchedule(matchups().length)).slice(); },
     state: function () { return { phase: phase, t: clock ? Math.round(clock.t * 1000) / 1000 : null, card: reelIdx, clock: clock ? clock.mode : null, charge: hold.charge }; }
   };

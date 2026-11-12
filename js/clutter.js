@@ -31,9 +31,8 @@
 //                 IntersectionObservers: bands near the viewport have their pieces in the DOM (built a batch a frame),
 //                 bands in it are "awake" (ambient scheduling, hover). Each video clipping has its own observer and
 //                 holds a canvas only while part of it is on screen. On phones, while the page is actually scrolling:
-//                 the reel is held, no canvas is created or drawn, nothing pops and nothing is re-measured; clippings
-//                 that scrolled in get their pictures (two a beat) once it stops — "stopped" adapts to the frame rate,
-//                 so slow frames never make the reel stop-start. One timer drives everything ambient; it stops when
+//                 nothing pops and nothing is re-measured — but the clips keep playing, and a clipping that scrolls in
+//                 gets its canvas and picture at once (the user asked that the videos never stop for a scroll). One timer drives everything ambient; it stops when
 //                 the tab is hidden and under html.reduce (everything still, ambient pieces simply stay put).
 //
 //  CLIPS          The eleven ATLAS clips, each its own slanted clipping with the cutscene's grain. A clip is repeated
@@ -970,7 +969,6 @@
   }
   function clipOn(sp, name) {
     if (!W.ATLAS || !sp.screen || sp.canvas || (ioClip && !sp.seen)) return;
-    if (scrolling) return;                               // a phone in mid-scroll: no new canvases now — tick() hands them out when it stops
     name = name || pickClip();
     if (!name) return;
     var c = ATLAS.canvas(name);
@@ -1085,16 +1083,15 @@
     if (need && !tickTimer) tickTimer = W.setTimeout(tick, 240);
     else if (!need && tickTimer) { W.clearTimeout(tickTimer); tickTimer = 0; }
   }
-  // Phones: while the page is being scrolled the reel is held (no decoding, no canvas painting) and nothing pops; it all
-  // picks up again a moment after the scroll stops. The handler itself only notes the time — it reads no layout.
+  // Phones: while the page is being scrolled nothing pops in or out and nothing is re-measured (the video clips keep
+  // playing, and a clipping that scrolls in gets its picture at once); the popping picks up a moment after the scroll stops. The handler itself only notes the time — it reads no layout.
   var owed = false, scrollGap = 0, idleSeen = 0, idleN = 0;             // typical time between scroll events of the scroll in progress; idle checks passed
   function onScroll() {
     var t = now(), gap = t - scrollT;
     scrollT = t;
     if (gap < 1500) scrollGap = scrollGap ? scrollGap * 0.6 + gap * 0.4 : gap; else scrollGap = 0;
     if (scrolling || !shown || !curP || !curP.phone || isReduce()) return;
-    scrolling = true;
-    if (W.ATLAS && atlasStarted) { try { ATLAS.pause(); } catch (e) { /* ignore */ } }
+    scrolling = true;                                      // (the clips keep playing: the reel is never held for a scroll)
   }
   function tick() {
     tickTimer = 0;
@@ -1106,7 +1103,6 @@
       if (scrollT !== idleSeen) { idleSeen = scrollT; idleN = 0; } else idleN++;
       if (idleN < 2 || t - scrollT < clamp(scrollGap * 2.5, 180, 1800)) { tickTimer = W.setTimeout(tick, 110); return; }
       scrolling = false;
-      if (W.ATLAS && atlasStarted) { try { ATLAS.resume(); } catch (e) { /* ignore */ } }
       for (i = 0; i < awake.length; i++) { sp = awake[i]; if (sp.amb && sp.t !== Infinity) sp.t += 400; }   // nobody pops the instant the finger lifts
       owed = true;                                         // … but the clippings that scrolled in are owed their pictures
     }

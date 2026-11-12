@@ -2,7 +2,7 @@
    intro.css — the cutscene overlay built by js/intro.js (everything is scoped under .intro, classes prefixed ix-).
    Sections:
      1  overlay + tokens          5  newspaper stage: desk, flashes, headline banner, photo clippings
-     2  gate                      6  matchup reel (title card + 45 cards, flipped through)
+     2  gate                      6  matchup reel (a pile of cards, flipped through)
      3  terminal + static + CRT   7  BAM
      4  pre-intro beam            8  hold-to-skip        9  ?reduce
    Layout units: js sets --vw / --vh (1% of the overlay, px) and --cu (1% of the reel width, px). Where the reel and
@@ -426,7 +426,6 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .ix-mrow--l .ix-pts { font-size: calc(var(--cu) * 8); }
 /* the plates of the big type (week number, winner, winning score) for the snare hits: see .ix-plate in section 5 */
 .ix-card [data-t]::before, .ix-card [data-t]::after { content: attr(data-t); position: absolute; inset: 0; z-index: -1; padding: inherit; opacity: 0; pointer-events: none; text-shadow: none; }
-.ix-card.hit.on [data-t]::before, .ix-card.hit.on [data-t]::after { will-change: transform, opacity; }   /* the cards of the snare build: layers before the hit, not at it */
 .ix-card [data-t]::before { --sx: -1; color: var(--n-teal); }
 .ix-card [data-t]::after { --sx: 1; color: var(--n-rose); }
 .ix-card .ix-wk b::before { color: var(--n-must); }
@@ -434,10 +433,10 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .ix-card.hb [data-t]::before, .ix-card.hb [data-t]::after { animation: ix-sep-b 230ms step-end; }
 .ix-measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: nowrap; font-family: var(--n-scream); font-size: 100px; line-height: 1; text-transform: uppercase; letter-spacing: .005em; padding: 0 .14em; }
 
-/* title card: what lies on top of the pile before the first matchup is turned up */
-.ix-title { text-align: center; padding-top: calc(var(--cu) * 5); padding-bottom: calc(var(--cu) * 5.5); }
-.ix-title .ix-mast { font-family: var(--n-mast); font-weight: 700; font-size: calc(var(--cu) * 12.6); line-height: 1.05; white-space: nowrap; overflow: hidden; padding: calc(var(--cu) * 3.4) 0 calc(var(--cu) * 2.6); border-bottom: calc(var(--cu) * .5) double var(--n-ink); border-bottom-width: 4px; }
-.ix-title .ix-ed { font-family: var(--n-scream); font-size: calc(var(--cu) * 7.4); line-height: 1; text-transform: uppercase; letter-spacing: .03em; padding-top: calc(var(--cu) * 3.6); white-space: nowrap; }
+/* a matchup still to be played: the pairing only, both names the same weight */
+.ix-mrow--p { height: calc(var(--cu) * 15); grid-template-columns: minmax(0, 1fr); }
+.ix-mrow--p + .ix-mrow--p { border-top: 1px dashed var(--n-rule); }
+.ix-mrow--p .ix-name { font-size: calc(var(--cu) * 10.6); }
 
 /* ---------- 7. BAM ----------
    Everything here is started by two classes on the overlay — .ix-bam-fx (the impact graphics) and, a frame later,
