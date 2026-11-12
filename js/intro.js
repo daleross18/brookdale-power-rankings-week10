@@ -56,7 +56,7 @@
     REEL_CURVE: 1.6,                // > 1: stays slow for longer, then runs away
     REEL_FAST_REDUCED: 0.3,         // ?reduce: no blur
     LIGHT_MIN_MS: 300,              // the flash of light of a turn at most this often (the reel turns far faster than that at the end)
-    FADE_IN: 2.2,                   // the stage fades in over the first seconds of the song
+    OPEN: 1.15,                     // the line left by the pre-intro opens (up and down) onto the stage over the first seconds of the song
     BUILD_ZOOM: 0.05,               // how far the stage pushes in over the snare build (0 = off)
     BUILD_JOLT: 1,                  // how hard each snare hit knocks the clippings (degrees, grows through the build; 0 = off)
 
@@ -477,7 +477,12 @@
     add(skip, h('span', 'ix-skip-label', 'hold to skip'), fill);
 
     [tube, pre, stage, bamEl].forEach(function (x) { x.setAttribute('aria-hidden', 'true'); });   // picture only; the two controls stay reachable
-    add(o, term, pre, stage, bamEl, skip);
+    // two black halves that lie closed over the stage and slide apart from the line of the pre-intro; each carries the
+    // line along its inner edge
+    var shut = el.shut = h('div', 'ix-layer ix-shut');
+    el.shutT = h('i', 't'); el.shutB = h('i', 'b'); el.edgeT = h('b', ''); el.edgeB = h('b', '');
+    el.shutT.appendChild(el.edgeT); el.shutB.appendChild(el.edgeB); add(shut, el.shutT, el.shutB);
+    add(o, term, pre, stage, shut, bamEl, skip);
     document.body.appendChild(o);
   }
 
@@ -754,6 +759,7 @@
     var at = QS.fast ? Math.max(0, CFG.THX_END - CFG.PRE_FAST) : 0;
     clock = new Clock(P.thx, at);
     dotBorn = at;
+    for (var x = 0; x < at; x += 0.25) runMax = Math.max(runMax, thxEnv(x));   // started part-way (?fast): the line is as long as the sound has made it
     P.playThx(at).then(function (ok) {
       if (ok || !clock || clock.el !== P.thx || phase !== 'pre') return;
       clock.toWall();                                // the sound cannot play: nothing to wait for, go on to the fade-in
@@ -772,9 +778,9 @@
     var env = thxEnv(t);
     if (env > runMax) runMax = env;
     var dot = Math.exp(-(t - dotBorn) / 0.9);                 // afterglow of the power-off
-    var W = el.W * 0.86, minK = 7 / W;
-    var k = minK + (1 - minK) * ease(clamp(runMax * 1.08, 0, 1));
-    var bright = clamp(Math.max(dot, Math.pow(env, 0.6)), 0.05, 1);
+    var W = el.W, minK = 7 / W, grown = ease(clamp(runMax * 1.08, 0, 1));   // it ends as wide as the screen
+    var k = minK + (1 - minK) * grown;
+    var bright = clamp(Math.max(dot, Math.pow(env, 0.6), 0.85 * grown * grown), 0.05, 1);   // once grown it stays lit: it is what opens onto the stage
     var warm = ease(clamp(runMax * 1.4, 0, 1));               // phosphor green → paper white as it grows
     var tf = 'scaleX(' + k.toFixed(4) + ') scaleY(' + (1 + env * 1.6).toFixed(3) + ')';
     el.beamG.style.transform = tf; el.beamW.style.transform = tf;
@@ -835,13 +841,21 @@
     stageAt(at);
   }
   function stageAt(t) {
-    var f = clamp(t / CFG.FADE_IN, 0, 1);
-    el.stage.style.opacity = f >= 1 ? '1' : Math.max(0.004, ease(f)).toFixed(3);
-    if (f >= 1 && !el.open) { el.open = true; el.root.classList.add('ix-open'); }   // the desk covers everything now: drop the overlay's own black
-    // the beam dissolves as the stage comes up
-    var pf = clamp(1 - t / 0.7, 0, 1);
-    if (pf > 0) { el.beamG.style.opacity = (parseFloat(el.beamG.style.opacity || 0) * pf).toFixed(3); el.beamW.style.opacity = (parseFloat(el.beamW.style.opacity || 0) * pf).toFixed(3); el.glow.style.opacity = '0'; }
-    else if (el.beamW.style.display !== 'none') { el.beamG.style.display = el.beamW.style.display = el.glow.style.display = 'none'; }
+    // the line opens: the stage is there in full under two black halves that slide apart, the line riding each edge
+    var p = REDUCED ? 1 : clamp(t / CFG.OPEN, 0, 1);
+    if (!el.stageUp) {
+      el.stageUp = true;
+      el.stage.style.opacity = '1';
+      el.beamG.style.display = el.beamW.style.display = el.glow.style.display = 'none';   // the edges of the halves are the line now
+    }
+    if (!el.open) {
+      if (p >= 1) { el.open = true; el.shut.style.display = 'none'; el.root.classList.add('ix-open'); }   // the desk covers everything now: drop the overlay's own black
+      else {
+        var e = p * p * (3 - 2 * p), y = (e * 100).toFixed(2), a = (1 - p * p).toFixed(3);
+        el.shutT.style.transform = 'translateY(-' + y + '%)'; el.shutB.style.transform = 'translateY(' + y + '%)';
+        el.edgeT.style.opacity = a; el.edgeB.style.opacity = a;
+      }
+    }
     // the build: push in a little on every snare hit, then pull back before the drop
     var hits = CFG.SNARE_HITS, h0 = hits[0], last = hits[hits.length - 1], s = 1, heat = 0;
     if (t >= h0) {

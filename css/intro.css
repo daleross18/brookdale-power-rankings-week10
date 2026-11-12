@@ -179,11 +179,21 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .intro[data-phase="pre"] .ix-pre, .intro[data-phase="intro"] .ix-pre { visibility: visible; }
 .ix-pre { background: #000; pointer-events: none; }
 .intro[data-phase="intro"] .ix-pre { background: transparent; }
-.ix-beam, .ix-glow { position: absolute; left: 7%; right: 7%; top: 50%; transform-origin: 50% 50%; will-change: transform, opacity; }
-.ix-beam { height: 2px; margin-top: -1px; border-radius: 2px; opacity: 0; }
+.ix-beam, .ix-glow { position: absolute; left: 0; right: 0; top: 50%; transform-origin: 50% 50%; will-change: transform, opacity; }
+.ix-beam { height: 2px; margin-top: -1px; opacity: 0; }
 .ix-beam.g { background: var(--t-green-2); box-shadow: 0 0 10px 1px rgba(74, 246, 38, .8); }
 .ix-beam.w { background: #fffdf2; box-shadow: 0 0 12px 2px rgba(255, 250, 225, .85); }
 .ix-glow { height: calc(var(--vh) * 34); margin-top: calc(var(--vh) * -17); opacity: 0; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 248, 222, .5) 0, rgba(255, 244, 205, .16) 30%, rgba(255, 240, 200, 0) 70%); }
+
+/* the line opens onto the stage: two black halves closed over it, slid apart by js (transform only), the line on each inner edge */
+.ix-shut { visibility: hidden; overflow: hidden; pointer-events: none; z-index: 15; }   /* over everything on the stage (its banner is z 9), under the skip control */
+.intro[data-phase="intro"] .ix-shut { visibility: visible; }
+.ix-shut i { position: absolute; left: 0; right: 0; height: 50%; background: #000; will-change: transform; }
+.ix-shut i.t { top: 0; }
+.ix-shut i.b { bottom: 0; }
+.ix-shut b { position: absolute; left: 0; right: 0; height: 2px; background: #fffdf2; box-shadow: 0 0 12px 2px rgba(255, 250, 225, .85); will-change: opacity; }
+.ix-shut i.t b { bottom: -1px; }
+.ix-shut i.b b { top: -1px; }
 
 /* ---------- 5. newspaper stage ---------- */
 .intro[data-phase="intro"] .ix-stage, .intro[data-phase="bam"] .ix-stage, .intro.ix-stage-on .ix-stage { visibility: visible; }
