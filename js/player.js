@@ -536,6 +536,7 @@
     cameraOn: cameraOn, cameraOff: cameraOff,
     latency: latency, handoff: handoff,
     play: play, pause: pause, toggle: toggle, isPlaying: isPlaying, dock: dock,
+    audio: function () { return ctx && master ? { ctx: ctx, out: master, paused: userPaused } : null; },   // for js/sfx.js: the interface sounds share the context, the output and the pause
     _debug: function () {
       return { ctx: ctx ? ctx.state : null, cur: cur, started: started, owned: owned, userPaused: userPaused, xfade: !!xfade,
         camera: !!cameraSrc, cameraBuf: !!cameraBuf, graph: USE_GRAPH,

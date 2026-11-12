@@ -1191,7 +1191,7 @@
     if (hot === sp) return;
     if (hot && hot.node) hot.node.classList.remove('cl-hot');
     hot = sp;
-    if (sp && sp.node) { sp.node.classList.remove('cl-pop', 'cl-gl', 'cl-tap', 'cl-flip'); sp.node.classList.add('cl-hot'); }
+    if (sp && sp.node) { sp.node.classList.remove('cl-pop', 'cl-gl', 'cl-tap', 'cl-flip'); sp.node.classList.add('cl-hot'); if (W.SFX) { try { SFX.hover(); } catch (e) { /* no sound */ } } }
   }
   var moveX = 0, moveY = 0, moveT = null;
   // Is the thing under the pointer something a piece would be hidden by (a clipping, a photo, the stuck nav, any solid box)?
@@ -1232,6 +1232,7 @@
     W.clearTimeout(tapTimer);
     tapped = sp;
     var cl = sp.node.classList; cl.remove('cl-pop', 'cl-gl', 'cl-flip'); cl.add('cl-tap');
+    if (W.SFX) { try { SFX.hover(); } catch (e) { /* no sound */ } }
     tapTimer = W.setTimeout(function () { if (tapped && tapped.node) tapped.node.classList.remove('cl-tap'); tapped = null; tapTimer = 0; }, 950);
   }
 

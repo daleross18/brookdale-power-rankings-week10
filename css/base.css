@@ -337,6 +337,7 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 @media (min-width: 900px) {
   .prose--cols { max-width: none; columns: 2; column-gap: 36px; column-rule: 1px solid var(--rule); }
   .prose--cols p { break-inside: avoid-column; }
+  .prose--cols p:only-child { break-inside: auto; }   /* a write-up of one long paragraph runs across both columns */
 }
 
 .hl {

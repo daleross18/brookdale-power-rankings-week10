@@ -181,7 +181,7 @@
 }
 
 /* ---------- write-up ---------- */
-.tm-writeup__text { font-size: var(--fs-3); }
+.tm-writeup__text { font-size: var(--fs-3); text-transform: uppercase; letter-spacing: 0.01em; hyphens: manual; }   /* set in capitals (the text in writeups.js stays as written) */
 .tm-writeup__text > p:first-child::first-letter {
   float: left;
   font-family: var(--f-head); font-weight: 900; font-size: 3.4em; line-height: 0.8;

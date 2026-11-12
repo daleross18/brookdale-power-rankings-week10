@@ -81,7 +81,8 @@
     doc.removeEventListener(MOVE, onMove, passive);
     return p;
   }
-  function firePending() { var p = unpend(); if (p) press(p.target); }
+  function tick() { if (window.SFX) { try { SFX.hover(); } catch (e) { /* no sound */ } } }   // the press is the hover of a touch screen: it ticks like one
+  function firePending() { var p = unpend(); if (p) { press(p.target); tick(); } }
   function point(e) { return (e.touches && e.touches[0]) || e; }
 
   function onDown(e) {
@@ -102,7 +103,7 @@
   function onUp(e) {
     if (e.pointerType === 'mouse') return;
     var p = unpend();
-    if (p && !p.target.closest('a[href]')) press(p.target);
+    if (p && !p.target.closest('a[href]')) { press(p.target); tick(); }
   }
   function onCancel() { unpend(); dropAll(); }
 
