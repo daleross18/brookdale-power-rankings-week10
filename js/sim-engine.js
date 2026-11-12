@@ -125,11 +125,11 @@
   // Bump ALGO whenever the calibration code itself changes.
   var ALGO = 'cal-2';
   var BAKED = {
-    '045fd1f7c7bba7cd': {
-      prior: [4.58, 3.75, 3.2, 1.93, 1.27, -0.21, -0.21, -2.69, -3.57, -8.04],
-      strength: [-3.42, -4.25, -1.41, -1.93, -2.14, 1.66, 7.79, -0.69, 4.43, -0.04],
-      achieved: [1, 0.9208, 0.7545, 0.694, 0.6842, 0.604, 0.436, 0.454, 0.2803, 0.1722],
-      iterations: 6, priorIterations: 6, rmse: 0.10874, maxAbs: 0.2
+    '460f64f839216299': {
+      prior: [8.22, 3.5, 2.67, 1.53, 0.75, -0.61, -0.61, -3.16, -4, -8.31],
+      strength: [0.22, -4.5, -2.08, -2.19, -2.83, 1.55, 7.39, -1.26, 4, -0.31],
+      achieved: [1, 0.9225, 0.7535, 0.6942, 0.6838, 0.6043, 0.4302, 0.4543, 0.2868, 0.1703],
+      iterations: 7, priorIterations: 11, rmse: 0.0942, maxAbs: 0.1625
     }
   };
 
@@ -205,7 +205,7 @@
       // ranks must be a permutation of 1..10, each with a full row of odds — otherwise NaN would leak into every result
       var seenRank = {};
       B.teams.forEach(function (t) {
-        var o = B.oddsByRank[t.rank - 1];
+        var o = t.oddsNow || B.oddsByRank[t.rank - 1];
         if (seenRank[t.rank] || !o) throw new Error('SIM_ENGINE: bad or duplicate rank for ' + t.slug);
         seenRank[t.rank] = true;
         ['playoff', 'finals', 'championship'].forEach(function (k) {
@@ -345,6 +345,7 @@
       var S = B.season, parts = [ALGO, WINDOW, CAL_SEASONS, FRESH_SEASONS, CAL_SEED, PRIOR_BOUND];
       B.teams.forEach(function (t) { parts.push(t.slug + ':' + t.rank); });
       B.oddsByRank.forEach(function (o) { parts.push(o.playoff.pct); });
+      B.teams.forEach(function (t) { if (t.oddsNow) parts.push('now:' + t.slug + ':' + t.oddsNow.playoff.pct); });   // hand-set current odds
       S.weeks.forEach(function (w) { parts.push('w' + w.week); w.games.forEach(function (g) { parts.push(g[0], cents(g[1]), g[3], cents(g[4])); }); });
       S.remaining.forEach(function (w) { parts.push('r' + w.week); w.games.forEach(function (g) { parts.push(g[0], g[1]); }); });
       var str = parts.join('|'), h1 = 0x811C9DC5, h2 = 0x01234567, c, i;
@@ -360,7 +361,7 @@
     function computeCalibration(B) {
       var S = B.season, i, k;
       var target = new Float64Array(NT);
-      for (i = 0; i < NT; i++) target[i] = Math.min(0.99, Math.max(0.01, B.oddsByRank[B.teams[i].rank - 1].playoff.pct / 100));
+      for (i = 0; i < NT; i++) target[i] = Math.min(0.99, Math.max(0.01, (B.teams[i].oddsNow || B.oddsByRank[B.teams[i].rank - 1]).playoff.pct / 100));
 
       // one fixed block of normal draws shared by both fits
       var fa = [], fb = [];
@@ -421,10 +422,10 @@
         mu[n] = st;
         return { slug: t.slug, name: t.name, code: t.code, rank: t.rank, strength: st, mean: round(MEAN + st, 100),
           prior: pr, lo: lo, hi: hi, clamped: st <= lo + 0.011 ? 'lo' : (st >= hi - 0.011 ? 'hi' : null),
-          target: Number(B.oddsByRank[t.rank - 1].playoff.pct) / 100, achieved: rec.achieved[n] };
+          target: Number((t.oddsNow || B.oddsByRank[t.rank - 1]).playoff.pct) / 100, achieved: rec.achieved[n] };
       });
       implied = B.teams.map(function (t) {
-        var o = B.oddsByRank[t.rank - 1];
+        var o = t.oddsNow || B.oddsByRank[t.rank - 1];
         return { playoff: Number(o.playoff.pct) / 100, finals: Number(o.finals.pct) / 100, championship: Number(o.championship.pct) / 100 };
       });
       calibration = { key: key, baked: !!baked, iterations: rec.iterations, priorIterations: rec.priorIterations, rmse: rec.rmse, maxAbs: rec.maxAbs,

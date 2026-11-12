@@ -446,7 +446,7 @@
       c.bars = [];
       for (var k = 0; k < teams.length; k++) { var bar = h('i', { class: k === CUT ? 'is-out is-cut' : k > CUT ? 'is-out' : null }); c.bars.push(bar); c.dist.appendChild(bar); }
       APP.tip(c.dist, '', 'Final seed');
-      var imp = impliedByRank[t.rank - 1];
+      var imp = t.oddsNow || impliedByRank[t.rank - 1];
       if (imp) {
         c.poImp.textContent = whole(imp.playoff.pct / 100);
         c.fiImp.textContent = whole(imp.finals.pct / 100);

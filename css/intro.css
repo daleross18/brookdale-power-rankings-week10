@@ -339,11 +339,15 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .ix-card::before { content: ""; position: absolute; inset: 0; background-size: 128px 128px; opacity: .22; pointer-events: none; }
 .ix-card.on { visibility: inherit; }
 .ix-card.lit { animation: ix-reveal 140ms step-end; }
-.ix-card.out { animation: ix-flip var(--flip-ms, 230ms) step-end forwards; }
+.ix-card.out { animation: ix-flip var(--flip-ms, 230ms) linear forwards; }
+/* Held poses are written out as pairs of keyframes (a pose holds from its keyframe to just before the next one) instead of
+   relying on a step timing function: Safari does not hold steps on composited opacity / transform animations, and with
+   step-end the back of the paper (.ix-flap) showed flat and opaque over the matchup it had just uncovered. Every keyframe
+   carries the same transform list, and whatever is meant to be gone is also visibility: hidden. */
 @keyframes ix-flip {
-  0% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(30deg); }
-  22% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(61deg) skewX(-4deg); }
-  44%, 100% { opacity: 0; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  0%, 21.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(30deg) skewX(0deg); }
+  22%, 43.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(61deg) skewX(-4deg); }
+  44%, 100% { opacity: 0; visibility: hidden; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg) skewX(0deg); }
 }
 @keyframes ix-reveal {
   0% { transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
@@ -365,32 +369,33 @@ html.intro-active, html.intro-active body { overflow: hidden; }
   box-shadow: var(--n-shadow);
 }
 .ix-lit { background: #fffdf3; }
-.ix-flap.a { animation: ix-flap-a var(--flip-ms, 230ms) step-end both; }
-.ix-flap.b { animation: ix-flap-b var(--flip-ms, 230ms) step-end both; }
+.ix-flap { visibility: hidden; }   /* only ever shown by its own keyframes */
+.ix-flap.a { animation: ix-flap-a var(--flip-ms, 230ms) linear both; }
+.ix-flap.b { animation: ix-flap-b var(--flip-ms, 230ms) linear both; }
 @keyframes ix-flap-a {
-  0% { opacity: 0; }
-  44% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
-  64% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
-  84%, 100% { opacity: 0; }
+  0%, 43.9% { opacity: 0; visibility: hidden; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  44%, 63.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  64%, 83.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
+  84%, 100% { opacity: 0; visibility: hidden; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
 }
 @keyframes ix-flap-b {
-  0% { opacity: 0; }
-  44% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
-  64% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
-  84%, 100% { opacity: 0; }
+  0%, 43.9% { opacity: 0; visibility: hidden; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  44%, 63.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  64%, 83.9% { opacity: 1; visibility: visible; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
+  84%, 100% { opacity: 0; visibility: hidden; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
 }
 .ix-lit.a { animation: ix-lit-a 210ms step-end both; }
 .ix-lit.b { animation: ix-lit-b 210ms step-end both; }
 @keyframes ix-lit-a {
-  0% { opacity: .8; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
-  30% { opacity: .44; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
-  60% { opacity: .17; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
+  0% { opacity: .5; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
+  30% { opacity: .28; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
+  60% { opacity: .1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
   100% { opacity: 0; }
 }
 @keyframes ix-lit-b {
-  0% { opacity: .8; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
-  30% { opacity: .44; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
-  60% { opacity: .17; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
+  0% { opacity: .5; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
+  30% { opacity: .28; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
+  60% { opacity: .1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
   100% { opacity: 0; }
 }
 /* the flash of a turn: a bloom behind the pile (js flips a/b), plus a glint from the flash pool on a corner of the card.

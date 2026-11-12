@@ -43,6 +43,7 @@
   var CFG = {
     media: 'media/',
     FLIP_MS: 230,                   // one turn of the reel: the top clipping flips up and over in five held poses
+    MIN_SHOW_MS: 150,               // a matchup stays on top at least this long, even when the reel is catching up after dropped frames
     UNDER: 2,                       // clippings waiting in the pile under the top one
 
     // --- jungle.m4a (seconds of song time) ---
@@ -255,7 +256,7 @@
   var raf = 0, lastNow = 0;
   var clock = null;                  // drives 'pre' and 'intro'
   var games = [], sched = [], cards = [];
-  var reelIdx = -1, barIdx = 0, hitIdx = 0, lastHitT = -10, nextFlash = 0;
+  var reelIdx = -1, barIdx = 0, hitIdx = 0, lastHitT = -10, nextFlash = 0, lastTurn = -1e9;
   var canvases = [], clipsMade = false;   // the eleven ATLAS canvases (created in the gate tap, released before the drop)
   var geo = { reel: { x: 0, y: 0, w: 0, h: 0 } };   // where the reel lies (px), set by layout()
   var hitFlip = false;
@@ -837,7 +838,9 @@
   function tickIntro(now, dt) {
     var raw = clock.tick(now, dt), quiet = true;
     var t = clock.mode === 'media' ? raw - P.latency() : raw;   // what is being heard right now
-    while (reelIdx + 1 < sched.length && t >= sched[reelIdx + 1]) { showCard(reelIdx + 1, true); mark('card', reelIdx, t); quiet = false; }
+    // one matchup per turn, never two in a frame: if frames were dropped the reel flips through what it owes (a short
+    // turn each) instead of jumping past it, so every matchup is seen
+    if (reelIdx + 1 < sched.length && t >= sched[reelIdx + 1] && now - lastTurn >= CFG.MIN_SHOW_MS) { lastTurn = now; showCard(reelIdx + 1, true); mark('card', reelIdx, t); quiet = false; }
     while (barIdx < CFG.BARS.length && t >= CFG.BARS[barIdx]) { barIdx++; pop(1, true, false); pop(0.9, false, true); pop(0.8, false, false); quiet = false; }
     while (hitIdx < CFG.SNARE_HITS.length && t >= CFG.SNARE_HITS[hitIdx]) {
       quiet = false;

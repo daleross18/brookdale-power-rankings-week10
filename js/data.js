@@ -5,6 +5,7 @@
 //                     `pre` = where the team stood in the preseason rankings (name, rank, odds).
 //  oddsByRank[]       the preseason odds table by rank slot. A team's current implied odds are the odds of the
 //                     slot it holds now; the change is measured against its own preseason slot (`pre`).
+//                     A team may carry `oddsNow` (same shape as a row of the table) to set its current odds by hand.
 //  season.standings   Yahoo standings through week 9.
 //  season.weeks       every matchup, weeks 1-9: [slugA, pointsA, projectedA, slugB, pointsB, projectedB].
 //  season.remaining   weeks 10-14 pairings from Yahoo's schedule (+ Yahoo's projections).
@@ -23,7 +24,8 @@ window.BROOKDALE = {
     { rank: 1,  slug: "dhhate",               code: "TTT", name: "Tre Tucker Time",      manager: "Oliver", historyKey: "Oliver",
       tagline: "SEASONS OVER",
       profile: "img/dhhate-profile.jpg", meme: "img/dhhate-meme.jpg",
-      pre: { rank: 8, name: "DHhate" } },
+      pre: { rank: 8, name: "DHhate" },
+      oddsNow: { projectedRecord: "10-4", playoff: { pct: 90, odds: "-900" }, finals: { pct: 40, odds: "+150" }, championship: { pct: 24, odds: "+315" } } },
     { rank: 2,  slug: "hammertime",           code: "HAM", name: "HammerTime",           manager: "Caleb",  historyKey: "Caleb",
       tagline: "BEST OF THE REST",
       profile: "img/hammertime-profile.jpg", meme: "img/hammertime-meme.jpg",

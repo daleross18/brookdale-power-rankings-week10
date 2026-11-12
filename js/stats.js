@@ -470,7 +470,7 @@
 
       // odds
       var table = B.oddsByRank || [];
-      var now = table[src.rank - 1] || null;
+      var now = src.oddsNow || table[src.rank - 1] || null;
       var pre = src.pre ? (table[src.pre.rank - 1] || null) : null;
       function d(k) { return now && pre && now[k] && pre[k] ? r2(now[k].pct - pre[k].pct) : null; }
       team.odds = { now: now, pre: pre, delta: { playoff: d('playoff'), finals: d('finals'), championship: d('championship') } };
