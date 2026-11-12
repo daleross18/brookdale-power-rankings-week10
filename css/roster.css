@@ -1,0 +1,252 @@
+/* ============================================================================
+   roster.css — the roster section built by js/roster.js (ROSTER.render). Everything lives under .ros.
+
+   Printed like an agate box score: serif names, mono figures, hairlines. Ink square = drafted (printed in the
+   first edition), red plus = added since (pencilled in); the counts line under the heading is the key to both.
+   Red is used for nothing else in a row except a week below zero. Layout follows the width of the section itself
+   (container query), not the viewport:
+     < 560px   slot · mark · name / team line · Pts · PPG
+     >= 560px  + GP and Rank columns
+     >= 700px  + weeks 1–9 bars in the row; the open panel becomes two columns
+     >= 980px  team line moves into its own column (one-line rows)
+   ============================================================================ */
+
+.ros {
+  container: ros / inline-size;
+  min-width: 0;
+  --ros-gap: 6px;
+  --ros-cols: 2.125rem 0.6875rem minmax(0, 1fr) 6.3ch 5.3ch 0.625rem;
+  --ros-pad: 2px;
+}
+
+/* ---------- drafted / added counts ---------- */
+.ros__sum {
+  display: flex; flex-wrap: wrap; gap: 4px var(--sp-5);
+  padding: 10px 0 2px;
+  font-family: var(--f-data); font-size: var(--fs-1); line-height: 1.4; color: var(--ink-2);
+}
+.ros__sum-item { display: inline-flex; align-items: center; gap: 0.45em; white-space: nowrap; }
+.ros__sum b { color: var(--ink); font-weight: 700; margin-right: -0.1em; }
+.ros__sum .ros__mark { margin-right: 0.15em; }
+
+/* ---------- the two marks ---------- */
+.ros__mark { display: inline-block; flex: none; width: 11px; height: 11px; }
+.ros__mark--d { background: var(--ink); }
+.ros__mark--a {
+  background:
+    linear-gradient(var(--red), var(--red)) 50% 50% / 100% 3px no-repeat,
+    linear-gradient(var(--red), var(--red)) 50% 50% / 3px 100% no-repeat;
+}
+
+/* ---------- groups, column heads ---------- */
+.ros__group { margin-top: var(--sp-4); }
+.ros__group + .ros__group { margin-top: var(--sp-5); }
+.ros__cols, .ros__btn {
+  display: grid; grid-template-columns: var(--ros-cols); column-gap: var(--ros-gap);
+  padding-left: var(--ros-pad); padding-right: var(--ros-pad);
+  font-family: var(--f-data); font-size: var(--fs-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.ros__cols {
+  align-items: end;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--ink);
+}
+.ros__group-name {
+  grid-column: 1 / span 3;
+  font-family: var(--f-data); font-weight: 700; font-size: var(--fs-0); line-height: 1.3;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink);
+}
+.ros__c {
+  font-weight: 600; font-size: var(--fs-00); line-height: 1.3;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2);
+  text-align: right; white-space: nowrap;
+}
+.ros__c--pts { grid-column: 4; }
+.ros__c--ppg { grid-column: 5; }
+.ros__c--gp, .ros__c--rank, .ros__c--spark { display: none; }
+
+/* ---------- player rows ---------- */
+.ros__row { border-bottom: 1px solid var(--rule); }
+.ros__list > .ros__row:last-child { border-bottom-color: var(--ink); }
+.ros__btn {
+  width: 100%; min-height: 48px;
+  align-items: baseline; align-content: center;
+  row-gap: 1px;
+  padding-top: 7px; padding-bottom: 7px;
+  text-align: left; line-height: 1.25; color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.ros__btn:focus-visible { outline-offset: -2px; }
+.ros__btn:disabled { cursor: default; }
+@media (hover: hover) { .ros__btn:not(:disabled):hover { background: rgba(21, 18, 15, 0.055); } }
+.ros__btn:active:not(:disabled) { background: rgba(21, 18, 15, 0.09); }
+.ros__row.is-open > .ros__btn { background: rgba(21, 18, 15, 0.055); }
+
+.ros__slot {
+  grid-column: 1; grid-row: 1;
+  font-weight: 600; font-size: var(--fs-00); letter-spacing: 0; color: var(--ink-2); white-space: nowrap;
+}
+.ros__btn > .ros__mark { grid-column: 2; grid-row: 1; align-self: baseline; }
+.ros__name {
+  grid-column: 3; grid-row: 1; min-width: 0;
+  font-family: var(--f-head); font-weight: 700; font-size: var(--fs-2); line-height: 1.2; letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
+}
+.ros__meta {
+  grid-column: 3 / -1; grid-row: 2; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px;
+  font-size: var(--fs-00); line-height: 1.35; color: var(--ink-3);
+}
+.ros__tm { white-space: nowrap; }
+.ros__via {                              /* "drafted by <team>": set like a credit line, not like data */
+  font-family: var(--f-body); font-style: italic; font-size: var(--fs-0); line-height: 1.25; letter-spacing: 0;
+  color: var(--ink-2); white-space: nowrap;
+}
+.ros__tag {
+  display: inline-block; flex: none;
+  padding: 0 4px; border: 1px solid var(--ink);
+  font-family: var(--f-data); font-weight: 700; font-size: 0.625rem; line-height: 1.35; letter-spacing: 0.03em;
+  color: var(--ink); white-space: nowrap;
+}
+.ros__tag--out { background: var(--ink); color: var(--paper-2); }
+.ros__tag--bye { border-style: dashed; border-color: var(--ink-3); color: var(--ink-2); font-weight: 600; }
+
+.ros__pts, .ros__ppg, .ros__gp, .ros__rank { grid-row: 1; text-align: right; white-space: nowrap; }
+.ros__pts { grid-column: 4; font-weight: 600; }
+.ros__ppg { grid-column: 5; color: var(--ink-2); }
+.ros__gp, .ros__rank, .ros__spark { display: none; }
+.ros__chev {
+  grid-column: 6; grid-row: 1; align-self: center; justify-self: end;
+  width: 7px; height: 7px; margin-top: -4px;
+  border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2);
+  transform: rotate(45deg);
+  transition: transform 0.18s ease;
+}
+.ros__row.is-open .ros__chev { transform: translateY(4px) rotate(225deg); }
+.ros__btn:disabled .ros__chev { visibility: hidden; }
+
+/* weeks 1–9 inside the row (wide layouts only) */
+.ros__spark { grid-row: 1; align-self: center; height: 22px; align-items: stretch; gap: 2px; border-bottom: 1px solid var(--ink-3); }
+.ros__sp { position: relative; flex: 1 1 0; min-width: 0; }
+.ros__sp .ros__bar { position: absolute; left: 0; right: 0; bottom: 0; min-height: 1px; background: var(--ink); }
+.ros__sp.is-out::after {
+  content: ""; position: absolute; left: 50%; bottom: 3px; width: 3px; height: 1px; margin-left: -1.5px; background: var(--ink-3);
+}
+
+/* ---------- the open panel ---------- */
+.ros__panel {
+  display: grid; grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.2s ease, visibility 0s linear 0.2s;
+}
+.ros__row.is-open > .ros__panel { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 0.2s ease, visibility 0s; }
+.ros__panel-in {
+  min-height: 0; overflow: hidden;
+  display: grid; gap: 14px;
+  padding: 0 var(--ros-pad);
+}
+.ros__panel-in > :first-child { margin-top: 12px; }
+.ros__panel-in > :last-child { margin-bottom: 16px; }
+
+.ros__facts { display: flex; gap: var(--sp-5); }
+.ros__fact { display: inline-flex; align-items: baseline; gap: 7px; font-size: var(--fs-1); }
+.ros__fact b { font-weight: 600; }
+
+.ros__chart { display: grid; gap: 6px; min-width: 0; }
+.ros__weeks { display: grid; grid-template-columns: repeat(var(--ros-weeks, 9), minmax(0, 1fr)); column-gap: 3px; }
+.ros__week { display: grid; grid-template-rows: 46px auto auto; justify-items: center; row-gap: 3px; min-width: 0; }
+.ros__plot { grid-row: 1; position: relative; width: 100%; }
+.ros__plot::after {                      /* zero line */
+  content: ""; position: absolute; left: -1.5px; right: -1.5px; bottom: var(--z, 0%); border-top: 1px solid var(--ink);
+}
+.ros__plot .ros__bar { position: absolute; left: 12%; right: 12%; min-height: 2px; background: var(--ink); }
+.ros__plot .ros__bar--neg { background: var(--red); }
+.ros__plot .ros__bar--zero { min-height: 0; }
+.ros__wv { grid-row: 2; font-size: 0.65625rem; line-height: 1.2; letter-spacing: -0.03em; white-space: nowrap; color: var(--ink); }
+.ros__week.is-out .ros__wv { color: var(--ink-3); font-family: var(--f-data); }
+.ros__wk { grid-row: 3; font-family: var(--f-data); font-size: 0.625rem; line-height: 1.2; color: var(--ink-3); }
+
+.ros__lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; min-width: 0; align-content: start; align-items: baseline; }
+.ros__linerow { display: contents; }
+.ros__line {
+  display: flex; flex-wrap: wrap; gap: 2px 12px;
+  font-family: var(--f-data); font-size: var(--fs-0); line-height: 1.4; color: var(--ink-2);
+}
+.ros__pair { white-space: nowrap; }
+.ros__pair b { color: var(--ink); font-weight: 600; font-size: var(--fs-1); }
+
+@keyframes ros-rise { from { transform: scaleY(0); } }
+.ros__row.is-open .ros__plot .ros__bar { transform-origin: 50% 100%; animation: ros-rise 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.ros__row.is-open .ros__plot .ros__bar--neg { transform-origin: 50% 0; }
+
+/* ---------- key ---------- */
+.ros__key {
+  display: flex; flex-wrap: wrap; gap: 5px var(--sp-4);
+  margin-top: var(--sp-3);
+  font-family: var(--f-data); font-size: var(--fs-00); line-height: 1.4; color: var(--ink-3);
+}
+.ros__key li { white-space: nowrap; }
+
+/* ---------- wider sections ---------- */
+@container ros (min-width: 560px) {
+  .ros__cols, .ros__btn {
+    --ros-gap: 12px;
+    grid-template-columns: 2.75rem 0.6875rem minmax(0, 1fr) 2.4ch 6.3ch 5.3ch 5.4ch 0.625rem;
+    padding-left: 4px; padding-right: 4px;
+  }
+  .ros__panel-in { padding-left: 4px; padding-right: 4px; }
+  .ros__gp, .ros__rank { display: block; }
+  .ros__c--gp, .ros__c--rank { display: block; }
+  .ros__gp, .ros__c--gp { grid-column: 4; }
+  .ros__pts, .ros__c--pts { grid-column: 5; }
+  .ros__ppg, .ros__c--ppg { grid-column: 6; }
+  .ros__rank, .ros__c--rank { grid-column: 7; }
+  .ros__gp { color: var(--ink-2); }
+  .ros__chev { grid-column: 8; }
+  .ros__facts { display: none; }                         /* games and rank are columns of the row from here up */
+  .ros__panel-in > .ros__chart { margin-top: 12px; }     /* ...so the chart is the first thing in the panel */
+  .ros__slot { font-size: var(--fs-0); }
+}
+@container ros (min-width: 700px) {
+  .ros__cols, .ros__btn {
+    grid-template-columns: 2.75rem 0.6875rem minmax(0, 1fr) 2.4ch 6.3ch 5.3ch 5.4ch 5.5rem 0.625rem;
+  }
+  .ros__spark { display: flex; grid-column: 8; }
+  .ros__c--spark { display: block; grid-column: 8; text-align: left; }
+  .ros__chev { grid-column: 9; }
+  .ros__panel-in { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
+  .ros__chart { max-width: 26rem; }
+  .ros__panel-in > .ros__chart, .ros__panel-in > .ros__lines { margin-top: 14px; margin-bottom: 18px; }
+  .ros__week { grid-template-rows: 56px auto auto; }
+  .ros__lines { padding-top: 1px; }
+}
+@container ros (min-width: 980px) {
+  .ros__cols, .ros__btn {
+    --ros-gap: 16px;
+    grid-template-columns: 3rem 0.6875rem 14.5rem minmax(0, 1fr) 2.4ch 6.3ch 5.3ch 5.4ch 9rem 0.625rem;
+  }
+  .ros__btn { min-height: 44px; padding-top: 6px; padding-bottom: 6px; font-size: 0.875rem; }
+  .ros__cols { font-size: 0.875rem; }
+  .ros__name { font-size: var(--fs-3); }
+  .ros__meta { grid-column: 4; grid-row: 1; font-size: var(--fs-0); }
+  .ros__via { font-size: var(--fs-1); }
+  .ros__tag { font-size: var(--fs-00); }
+  .ros__gp, .ros__c--gp { grid-column: 5; }
+  .ros__pts, .ros__c--pts { grid-column: 6; }
+  .ros__ppg, .ros__c--ppg { grid-column: 7; }
+  .ros__rank, .ros__c--rank { grid-column: 8; }
+  .ros__spark, .ros__c--spark { grid-column: 9; }
+  .ros__chev { grid-column: 10; }
+  .ros__panel-in { grid-template-columns: minmax(0, 30rem) minmax(0, 1fr); padding-left: calc(3rem + 0.6875rem + 36px); }
+  .ros__chart { max-width: none; }
+  .ros__wv { font-size: var(--fs-00); letter-spacing: -0.01em; }
+  .ros__wk { font-size: var(--fs-00); }
+  .ros__lines { column-gap: var(--sp-5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ros__panel, .ros__row.is-open > .ros__panel, .ros__chev { transition: none; }
+  .ros__row.is-open .ros__plot .ros__bar { animation: none; }
+}

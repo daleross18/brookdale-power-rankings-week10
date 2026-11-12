@@ -1,0 +1,268 @@
+/* ============================================================================
+   sim.css — the season simulator (view 'sim', js/sim.js). Built on base.css components.
+
+   .sim
+     .page.sim-top      .sim-ctl (.sim-ctl__go  .sim-ctl__copy)
+     .desk.sim-stage    .sim-stage__live (.sim-pile > .sim-pile__item > .clipping.sim-slip, Skip)   while a roll plays
+                        .sim-final (.sim-result--champ, .sim-result--last)                          when it is over
+     .page.sim-body     .sim-sec--rest  .sim-sec--stand  .sim-sec--bracket  .sim-sec--odds  .sim-sec--past
+
+   Shared pieces
+     .sim-game          one game: two .sim-game__side lines (seed?, name, points); .is-win / .is-loss once it has a score
+     .sim-weeks         a set of weeks: .sim-weeks__tabs (phones) + .sim-weeks__grid of .sim-week panels
+     .sim-tie           a bracket game in a box;  .sim-round = one bracket column
+
+   Layout   phones: one column, weeks as tabs.   760px: two columns (weeks 10–14 | standings).
+            1000px: weeks 10–14 five across, standings | playoffs, odds and weeks 1–9 full width.
+   ============================================================================ */
+
+.view--sim { display: flex; flex-direction: column; }
+.sim { min-width: 0; }
+
+/* ---------- controls ---------- */
+.sim-top { padding-top: var(--sp-5); }
+.sim-ctl { display: flex; align-items: stretch; gap: 14px; }
+.sim-ctl__go { flex: 1 1 auto; min-width: 0; min-height: 54px; font-size: var(--fs-3); }
+.sim-ctl__copy { flex: none; width: 8.25rem; padding: 0; font-size: var(--fs-1); }   /* fixed: "Link copied" must not resize the row */
+.sim-ctl__copy[hidden] { display: none; }
+@media (hover: none) {                                /* a tap must not leave the button in its hover ink */
+  .sim-ctl__go:hover { background: var(--ink); border-color: var(--ink); color: var(--paper-2); }
+  .sim-ctl__copy:hover { background: var(--paper-2); }
+}
+@media (min-width: 600px) {
+  .sim-ctl__go { flex: 0 0 auto; width: 17.5rem; }
+}
+
+/* ---------- one game ---------- */
+.sim-games { min-width: 0; }
+.sim-game { padding: 8px 0; min-width: 0; }
+.sim-game + .sim-game { border-top: 1px solid var(--rule); }
+.sim-game__side {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  font-size: var(--fs-2); line-height: 1.3;
+  color: var(--ink);
+}
+.sim-game__seed { flex: none; width: 1.35em; text-align: right; font-size: var(--fs-0); color: var(--ink-3); }
+.sim-game__name { flex: 1 1 auto; min-width: 0; font-family: var(--f-head); font-weight: 600; letter-spacing: -0.005em; }
+.sim-game__pts { flex: none; font-size: var(--fs-1); }
+.sim-game.is-final .sim-game__side::after {          /* winner's mark; the space is kept on both lines so scores align */
+  content: ""; flex: none; align-self: center;
+  width: 0; height: 0; border: 4px solid transparent; border-left: 0; border-right: 6px solid transparent;
+}
+.sim-game__side.is-win .sim-game__name { font-weight: 800; }
+.sim-game__side.is-win .sim-game__pts { font-weight: 700; }
+.sim-game.is-final .sim-game__side.is-win::after { border-right-color: var(--red); }
+.sim-game__side.is-loss { color: var(--ink-3); }
+
+/* ---------- the stage ---------- */
+.sim-stage { margin-top: var(--sp-5); padding: 24px var(--gutter) 30px; overflow: hidden; }
+.sim-stage.is-playing { cursor: pointer; }
+.sim-stage__live { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.sim-pile { position: relative; width: min(100%, 23rem); height: 20.75rem; }
+.sim-pile__item {
+  position: absolute; inset: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr); align-items: center;
+  transform: translate(var(--dx, 0), var(--dy, 0));
+}
+.sim-slip { --clip-pad: 12px 14px 9px; animation: sim-slap 0.2s cubic-bezier(0.2, 0.9, 0.3, 1) backwards; }
+.sim-slip__head { font-size: 1.75rem; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+.sim-slip__label { margin-top: 9px; color: var(--red); font-weight: 600; }
+.sim-slip .sim-games + .sim-slip__label { border-top: 1px solid var(--ink); padding-top: 7px; margin-top: 2px; }
+.sim-slip .sim-game { padding: 5px 0; }
+.sim-slip__label + .sim-games .sim-game:first-child { padding-top: 2px; }
+.sim-slip .sim-game__side { font-size: var(--fs-1); line-height: 1.25; }
+.sim-slip .sim-game__pts { font-size: var(--fs-0); }
+@keyframes sim-slap {
+  from { opacity: 0; transform: rotate(calc(var(--rot) * 2.6)) scale(1.24); }
+  to   { opacity: 1; transform: rotate(var(--rot)) scale(1); }
+}
+
+.sim-final { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; max-width: 30rem; margin: 0 auto; }
+.sim-final:empty { display: none; }
+.sim-result { min-width: 0; container-type: inline-size; }
+.sim-result--last { width: min(100%, 19.5rem); justify-self: end; }
+.sim-result__paper { --clip-pad: 14px 14px 15px; display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 9px; }
+.sim-stage.is-landing .sim-result__paper { animation: sim-slap 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) backwards; }
+.sim-stage.is-landing .sim-result--last .sim-result__paper { animation-delay: 0.22s; }
+.sim-result__kicker {
+  font-family: var(--f-data); font-weight: 700; font-size: var(--fs-1); line-height: 1.2;
+  text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--red);
+}
+.sim-result__name {
+  font-size: 3rem;
+  font-size: clamp(2.6rem, 15.5cqi, 5.25rem);
+  margin: -0.03em 0 0;
+}
+.sim-result__bot {
+  display: grid; grid-template-columns: 40% minmax(0, 1fr); gap: 12px 14px;
+  border-top: 1px solid var(--ink);
+  padding-top: 11px;
+  min-width: 0;
+}
+.sim-result__photo { aspect-ratio: 1 / 1; }
+.sim-result__cap { display: flex; flex-direction: column; min-width: 0; }
+.sim-result__mgr { font-family: var(--f-body); font-style: italic; font-size: 1.1875rem; line-height: 1.2; color: var(--ink-2); }
+.sim-result__rec { margin-top: auto; padding-top: 8px; font-weight: 600; font-size: 2.125rem; line-height: 1; letter-spacing: -0.03em; }
+.sim-result__seed { margin-top: 5px; font-family: var(--f-data); font-size: var(--fs-0); line-height: 1.3; color: var(--ink-2); }
+.sim-result__game { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 9px; min-width: 0; }
+.sim-result__game .sim-game { padding: 3px 0 0; }
+
+.sim-result--last .sim-result__paper { --clip-pad: 16px 13px 13px; row-gap: 7px; }
+.sim-result--last .sim-result__name { font-size: 1.9rem; font-size: clamp(1.7rem, 11cqi, 2.4rem); }
+.sim-result--last .sim-result__bot { grid-template-columns: 31% minmax(0, 1fr); padding-top: 10px; }
+.sim-result--last .sim-result__mgr { font-size: 1.0625rem; }
+.sim-result--last .sim-result__rec { font-size: 1.5rem; }
+
+@container (min-width: 33rem) {
+  .sim-result--champ .sim-result__paper { --clip-pad: 18px 20px 20px; }
+  .sim-result--champ .sim-result__bot { grid-template-columns: 38% minmax(0, 1fr); column-gap: 20px; grid-template-rows: 1fr auto; }
+  .sim-result--champ .sim-result__photo { grid-row: 1 / span 2; }
+  .sim-result--champ .sim-result__game { grid-column: 2; }
+  .sim-result--champ .sim-result__mgr { font-size: 1.5rem; }
+  .sim-result--champ .sim-result__rec { font-size: 3rem; }
+  .sim-result--champ .sim-result__seed { font-size: var(--fs-1); }
+}
+@media (min-width: 900px) {
+  .sim-stage { padding-top: 34px; padding-bottom: 40px; }
+  .sim-pile { width: 27rem; height: 23.5rem; }
+  .sim-slip { --clip-pad: 15px 18px 12px; }
+  .sim-slip__head { font-size: 2.125rem; }
+  .sim-slip .sim-game__side { font-size: var(--fs-2); }
+  .sim-slip .sim-game__pts { font-size: var(--fs-1); }
+  .sim-final { grid-template-columns: minmax(0, 38rem) minmax(0, 19rem); gap: 44px; max-width: 61rem; align-items: center; justify-content: center; }
+  .sim-result--last { width: auto; justify-self: stretch; }
+}
+
+/* ---------- sections ---------- */
+.sim-body { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-6); padding-top: var(--sp-6); }
+.sim-sec { min-width: 0; }
+.sim-sec > .section-head { margin-bottom: 12px; }
+
+/* weeks: tabs + one panel on phones */
+.sim-weeks__tabs { margin-bottom: 2px; }
+.sim-weeks__tabs > * { flex: 1 0 44px; padding: 0 4px; font-size: var(--fs-2); }
+.sim-week { display: none; min-width: 0; }
+.sim-week.is-on { display: block; }
+.sim-week__head { display: none; }                   /* the tabs name the week */
+
+@media (min-width: 760px) {
+  .sim-sec--past .sim-weeks__tabs { display: none; }
+  .sim-sec--past .sim-weeks__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 28px; }
+  .sim-sec--past .sim-week { display: block; }
+  .sim-sec--past .sim-week__head { display: block; }
+  .sim-sec--past .sim-game__side { font-size: var(--fs-1); }
+  .sim-sec--past .sim-game__pts { font-size: var(--fs-0); }
+}
+@media (min-width: 1000px) {
+  .sim-sec--rest .sim-weeks__tabs { display: none; }
+  .sim-weeks__grid, .sim-sec--past .sim-weeks__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 26px 26px; }
+  .sim-sec--rest .sim-week { display: block; }
+  .sim-sec--rest .sim-week__head { display: block; }
+  .sim-weeks .sim-game__side { font-size: var(--fs-1); }
+  .sim-weeks .sim-game__pts { font-size: var(--fs-0); }
+}
+.sim-week__head {
+  font-family: var(--f-head); font-weight: 800; font-size: var(--fs-3); line-height: 1.15;
+  border-bottom: 1.5px solid var(--ink);
+  padding-bottom: 5px;
+}
+
+/* standings */
+.sim-thru { margin-bottom: 10px; }
+.sim-thru > * { font-size: var(--fs-2); }
+.sim-stand td.team { white-space: normal; }
+.sim-stand__seed { color: var(--ink-3); width: 1.6em; }
+.sim-stand th:first-child, .sim-stand td:first-child { padding-right: 4px; }
+@media (max-width: 999.98px) {                       /* narrow column: tighter cells leave the room to the team name */
+  .sim-stand { font-size: var(--fs-1); }
+  .sim-stand th, .sim-stand td { padding-left: 6px; padding-right: 6px; }
+  .sim-stand th:last-child, .sim-stand td:last-child { padding-right: 2px; }
+}
+
+@media (pointer: coarse) {                            /* team links in table rows: 44px tall tap area, rows keep their height */
+  .sim-stand td.team a, .sim-odds th.team a { display: inline-block; padding: 15px 0; margin: -15px 0; }
+}
+
+/* playoffs */
+.sim-bracket { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 14px; align-items: start; }
+.sim-round { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.sim-round__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-family: var(--f-head); font-weight: 800; font-size: var(--fs-3); line-height: 1.15;
+  border-bottom: 1.5px solid var(--ink);
+  padding-bottom: 5px;
+}
+.sim-round__head small { font-family: var(--f-data); font-weight: 500; font-size: var(--fs-0); color: var(--ink-3); white-space: nowrap; }
+.sim-tie { border: 1.5px solid var(--ink); background: var(--paper-2); padding: 0 10px; min-width: 0; }
+.sim-tie .sim-game { padding: 7px 0; }
+.sim-tie__label { padding-top: 7px; margin-bottom: -3px; color: var(--ink-2); }
+.sim-tie--final { border-width: 3px; }
+.sim-byes { padding: 0 11.5px; }
+.sim-byes .sim-tie__label { padding-top: 2px; margin-bottom: 3px; }
+.sim-bracket__sub {
+  margin: 26px 0 12px;
+  font-family: var(--f-head); font-weight: 900; font-size: var(--fs-4); line-height: 1.1;
+}
+@media (max-width: 619.98px) {                        /* stacked rounds: a game nobody is in yet takes no room */
+  .sim-tie.is-empty, .sim-round.is-empty { display: none; }
+}
+@media (min-width: 620px) {
+  .sim-bracket--main { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sim-bracket--cons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .sim-bracket .sim-game__side { font-size: var(--fs-1); }
+  .sim-bracket .sim-game__pts { font-size: var(--fs-0); }
+  .sim-tie { padding: 0 8px; }
+  .sim-byes { padding: 0 9.5px; }
+}
+
+/* odds */
+.sim-odds__meter { display: block; height: 3px; min-width: 0; margin: -6px 0 6px; }
+.sim-odds__meter.is-done { visibility: hidden; }
+.sim-odds th.team { white-space: normal; min-width: 7.75rem; padding-right: 8px; font-size: var(--fs-1); line-height: 1.2; }
+.sim-odds th, .sim-odds td { padding-left: 7px; padding-right: 7px; }
+.sim-odds__team { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.sim-odds__rk { flex: none; width: 1.3em; text-align: right; color: var(--red); font-weight: 700; font-size: var(--fs-1); }
+.sim-odds thead th { vertical-align: bottom; }
+.sim-odds thead .sim-odds__grp { border-bottom: 1px solid var(--rule); padding-bottom: 4px; color: var(--ink); }
+.sim-odds .sim-odds__sub th { padding-top: 4px; }
+.sim-odds .sim-odds__sub th:first-child {             /* not the sticky column: "Team" spans both header rows */
+  position: static; background: none; box-shadow: none; padding-left: 7px;
+}
+.sim-odds td.sim-odds__imp, .sim-odds th.sim-odds__imp { color: var(--ink-3); padding-left: 2px; }
+.sim-odds td.sim-odds__ch { font-weight: 700; }
+.sim-odds td.num { min-width: 3.6em; }
+.sim-odds tbody tr > * { height: 46px; }                /* a row is never shorter than the 44px tap areas inside it */
+.sim-odds__dist { width: 1%; }
+.sim-dist {
+  position: relative;
+  display: inline-flex; align-items: flex-end; gap: 2px;
+  width: 84px; height: 24px;
+  border-bottom: 1px solid var(--ink);
+  vertical-align: middle; cursor: help;
+}
+.sim-dist::after { content: ""; position: absolute; inset: -11px -4px -12px; }      /* 46px tall tap area = the row */
+.sim-dist i { flex: 1 1 0; background: var(--ink); }
+.sim-dist i.is-out { background: rgba(21, 18, 15, 0.4); }
+.sim-dist i.is-cut { margin-left: 3px; }
+.sim-odds__foot { display: flex; margin-top: 16px; }
+@media (min-width: 760px) {
+  .sim-odds th.team { white-space: nowrap; font-size: var(--fs-2); padding-right: 10px; }
+  .sim-odds th, .sim-odds td { padding-left: 10px; padding-right: 10px; }
+}
+
+/* ---------- wider layouts ---------- */
+@media (min-width: 760px) and (max-width: 999.98px) {
+  .sim-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; }
+  .sim-sec--bracket, .sim-sec--odds, .sim-sec--past { grid-column: 1 / -1; }
+}
+@media (min-width: 1000px) {
+  .sim-body { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 44px; row-gap: var(--sp-7); }
+  .sim-sec--rest, .sim-sec--odds, .sim-sec--past { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-slip, .sim-stage.is-landing .sim-result__paper { animation: none; }
+}

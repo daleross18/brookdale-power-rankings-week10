@@ -1,0 +1,375 @@
+/* ============================================================================
+   intro.css — the cutscene overlay built by js/intro.js (everything is scoped under .intro, classes prefixed ix-).
+   Sections:
+     1  overlay + tokens          5  newspaper stage: desk, flashes, video clippings
+     2  gate                      6  matchup reel (title card + 45 cards)
+     3  terminal + static + CRT   7  BAM
+     4  pre-intro beam            8  hold-to-skip        9  reduced motion
+   Layout units: js sets --vw / --vh (1% of the overlay, px) and --cu (1% of the reel width, px).
+   Two compositions: portrait (default) and landscape/desktop (@media (min-aspect-ratio: 1/1)).
+   ========================================================================== */
+
+/* ---------- 1. overlay + tokens ---------- */
+html.intro-active, html.intro-active body { overflow: hidden; }
+.intro {
+  --vw: 1vw; --vh: 1vh; --cu: 3.6px;
+  /* old terminal site */
+  --t-green: #4af626; --t-green-2: #7dff5a; --t-green-dim: #1f6e19; --t-green-ghost: #164012;
+  --t-muted: #a6a6a6; --t-amber: #ffb000; --t-blue: #5ea8ff; --t-border: #1f1f1f; --t-title: #111111;
+  --t-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* newspaper (site tokens from base.css, with fallbacks so the overlay stands alone) */
+  --n-paper: var(--paper-2, #ebe5d5); --n-paper-2: var(--paper, #ddd6c4); --n-paper-3: var(--paper-3, #cbc2a9);   /* clippings are cut from the fresher stock */
+  --n-ink: var(--ink, #15120f); --n-ink-2: var(--ink-2, #3b3630); --n-ink-3: var(--ink-3, #62594d);
+  --n-rule: var(--rule, rgba(21, 18, 15, .3)); --n-red: var(--red, #c3261c); --n-hl: var(--hl, #f6e34f); --n-desk: var(--desk, #131517);
+  --n-mast: var(--f-mast, "UnifrakturCook"), "Playfair Display", Georgia, serif;
+  --n-scream: var(--f-scream, "Anton"), "Arial Narrow", Impact, sans-serif;
+  --n-head: var(--f-head, "Playfair Display"), Georgia, serif;
+  --n-data: var(--f-data, "IBM Plex Mono"), ui-monospace, Menlo, monospace;
+  --n-shadow: var(--shadow-clip, 0 1px 1px rgba(0, 0, 0, .3), 0 3px 5px rgba(0, 0, 0, .22), 0 14px 22px -8px rgba(0, 0, 0, .5));
+  position: fixed; inset: 0; z-index: 1000; overflow: hidden;
+  background: #000; color: var(--t-green);
+  font-family: var(--t-mono); font-size: 13.5px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+.intro *, .intro *::before, .intro *::after { box-sizing: border-box; }
+.intro button { font: inherit; margin: 0; border-radius: 0; -webkit-appearance: none; appearance: none; }
+.ix-layer { position: absolute; inset: 0; }
+.ix-term, .ix-pre, .ix-stage, .ix-bam { visibility: hidden; }
+
+/* ---------- 2. gate ---------- */
+.intro[data-phase="gate"] .ix-term, .intro[data-phase="terminal"] .ix-term,
+.intro[data-phase="static"] .ix-term, .intro[data-phase="off"] .ix-term { visibility: visible; }
+.ix-gate { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+.intro[data-phase="gate"] .ix-gate { display: flex; }
+.ix-play {
+  position: relative; width: 112px; height: 112px; padding: 0; cursor: pointer;
+  color: var(--t-green); background: #000; border: 1px solid var(--t-green-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.ix-play .ix-c { position: absolute; color: var(--t-green); background: #000; line-height: 1; font-size: 13px; }
+.ix-play .ix-c.tl { top: -7px; left: -4px; } .ix-play .ix-c.tr { top: -7px; right: -4px; }
+.ix-play .ix-c.bl { bottom: -7px; left: -4px; } .ix-play .ix-c.br { bottom: -7px; right: -4px; }
+.ix-play-tri { width: 0; height: 0; margin-left: 9px; border-left: 34px solid currentColor; border-top: 21px solid transparent; border-bottom: 21px solid transparent; }
+.ix-play:hover, .ix-play:focus-visible { background: #2a2a2a; color: #eaeaea; outline: none; border-color: var(--t-green); }
+.ix-play:hover .ix-c, .ix-play:focus-visible .ix-c { background: transparent; }
+.ix-play:active { background: var(--t-green); color: #000; }
+.ix-play-bar { display: none; width: 68px; height: 8px; border: 1px solid var(--t-green-dim); }
+.ix-play-bar i { display: block; height: 100%; background: var(--t-green); transform-origin: left center; transform: scaleX(var(--p, 0)); }
+.ix-play.is-loading { pointer-events: none; }
+.ix-play.is-loading .ix-play-tri { display: none; }
+.ix-play.is-loading .ix-play-bar { display: block; }
+.ix-sound { display: flex; align-items: center; gap: 10px; color: var(--t-green); letter-spacing: .04em; animation: ix-pulse 2s ease-in-out infinite; }
+.ix-spk { position: relative; width: 19px; height: 14px; flex: none; }
+.ix-spk::before { content: ""; position: absolute; left: 0; top: 0; width: 10px; height: 14px; background: currentColor; clip-path: polygon(0 32%, 40% 32%, 100% 0, 100% 100%, 40% 68%, 0 68%); }
+.ix-spk::after { content: ""; position: absolute; left: 6px; top: -1px; width: 16px; height: 16px; border: 1.5px solid transparent; border-right-color: currentColor; border-radius: 50%; box-shadow: inset -4px 0 0 -2.5px currentColor; }
+@keyframes ix-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (min-width: 900px) and (min-height: 600px) {
+  .ix-gate { gap: 26px; }
+  .ix-play { width: 144px; height: 144px; }
+  .ix-play-tri { margin-left: 11px; border-left-width: 44px; border-top-width: 27px; border-bottom-width: 27px; }
+  .ix-sound { font-size: 15px; }
+}
+
+/* ---------- 3. terminal + static + CRT power-off ---------- */
+.ix-tube { position: absolute; inset: 0; display: none; background: #000; transform-origin: 50% 50%; }
+.intro[data-phase="terminal"] .ix-tube, .intro[data-phase="static"] .ix-tube, .intro[data-phase="off"] .ix-tube { display: block; }
+.ix-screen { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.ix-screen-in { max-width: 1120px; margin: 0 auto; padding: 14px 14px 30px; }
+.ix-pane { position: relative; background: #000; border: 1px solid var(--t-border); }
+.ix-pane-title { display: flex; align-items: center; gap: 10px; background: var(--t-title); border-bottom: 1px solid var(--t-border); padding: 5px 10px; color: var(--t-muted); font-size: 12px; }
+.ix-dots { display: inline-flex; gap: 5px; }
+.ix-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--t-green-dim); display: block; }
+.ix-dots i:nth-child(2) { background: var(--t-green-ghost); border: 1px solid var(--t-green-dim); }
+.ix-dots i:nth-child(3) { background: var(--t-green); opacity: .55; }
+.ix-ttl { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ix-ttl b { color: var(--t-green); font-weight: 500; }
+.ix-meta { color: var(--t-green-dim); white-space: nowrap; }
+.ix-pane-body { padding: 12px 14px 14px; min-height: 60vh; }
+.ix-prompt { color: var(--t-green); white-space: pre-wrap; word-break: break-word; }
+.ix-prompt .host { color: var(--t-green-2); }
+.ix-prompt .path { color: var(--t-blue); }
+.ix-prompt .cur::after { content: "▮"; margin-left: 2px; animation: ix-blink 1s steps(2, start) infinite; }
+@keyframes ix-blink { to { visibility: hidden; } }
+.ix-ls { margin-top: 8px; }
+.ix-lshead { color: var(--t-muted); padding: 0 6px 2px; border-bottom: 1px solid var(--t-green-ghost); margin-bottom: 4px; }
+.ix-row, .ix-lshead { display: grid; grid-template-columns: 4ch 11ch 5ch 4ch 40px minmax(24ch, 30ch) 11ch 8ch minmax(0, 1fr); gap: 0 1.5ch; align-items: baseline; }
+.ix-row { align-items: center; padding: 3px 6px; border-left: 2px solid transparent; white-space: nowrap; }
+.ix-row > span { overflow: hidden; text-overflow: ellipsis; }
+.ix-row .br { display: none; }
+.ix-row .perms, .ix-row .size { color: var(--t-muted); }
+.ix-row .size { text-align: right; }
+.ix-lshead .size { text-align: right; }
+.ix-row .tag, .ix-lshead .tag { font-size: 12.5px; color: var(--t-amber); }
+.ix-lshead .tag { font-size: inherit; }
+.ix-row .thumb { display: block; width: 40px; overflow: visible; }
+.ix-row .pthumb { display: block; width: 40px; height: 40px; object-fit: cover; background: #000; border: 1px solid var(--t-green); filter: grayscale(1) sepia(1) hue-rotate(60deg) saturate(3) brightness(.9); }
+.ix-row .noimg { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px dashed var(--t-green-dim); color: var(--t-muted); font-size: 10px; }
+.ix-row.exe .perms { color: var(--t-green); }
+.ix-row.exe .rank, .ix-row.exe .file { color: var(--t-green-2); }
+.ix-row.exe .file { font-weight: 700; }
+.ix-row.exe .noimg { color: var(--t-green); border-style: solid; font-size: 14px; }
+.ix-row .xtag { color: var(--t-green-2); font-size: 10.5px; font-weight: 700; letter-spacing: 1px; margin-left: 1ch; border: 1px solid var(--t-green-dim); padding: 0 3px; vertical-align: 1px; }
+.ix-row.log .perms, .ix-row.log .file, .ix-row.log .rank { color: var(--t-blue); }
+.ix-status { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; display: flex; align-items: stretch; background: var(--t-title); border-top: 1px solid var(--t-border); font-size: 12px; overflow: hidden; }
+.ix-status span { display: flex; align-items: center; }
+.ix-status .sb-left { background: var(--t-green); color: #000; padding: 0 10px; white-space: nowrap; }
+.ix-status .sb-path { margin-left: 1ch; opacity: .8; }
+.ix-scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .03) 0, rgba(0, 0, 0, .03) 1px, transparent 1px, transparent 3px); }
+@media (max-width: 900px) {
+  .ix-row, .ix-lshead { grid-template-columns: 4ch 11ch 4ch 40px minmax(20ch, 1fr) 10ch 7ch; }
+  .ix-row > .size, .ix-lshead > .size, .ix-row > .tag, .ix-lshead > .tag { display: none; }
+}
+@media (max-width: 720px) {
+  .intro { font-size: 12.5px; }
+  .ix-screen-in { padding: 8px 6px 30px; }
+  .ix-pane-body { padding: 10px 8px 12px; }
+  .ix-lshead { display: none; }
+  .ix-row { display: flex; flex-wrap: wrap; gap: 0 1ch; align-items: center; white-space: normal; padding: 5px 6px; border-bottom: 1px solid var(--t-green-ghost); }
+  .ix-row > span { overflow: visible; text-overflow: clip; }
+  .ix-row .chk { order: 1; } .ix-row .thumb { order: 2; } .ix-row .rank { order: 3; }
+  .ix-row .file { order: 4; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .ix-row .br { order: 5; display: block; flex-basis: 100%; height: 0; }
+  .ix-row .perms { order: 6; } .ix-row .mgr { order: 7; }
+  .ix-row > .tag { order: 10; display: inline; }
+  .ix-row > .rec, .ix-row .size { display: none; }
+  .ix-row .thumb, .ix-row .pthumb, .ix-row .noimg { width: 34px; }
+  .ix-row .pthumb, .ix-row .noimg { height: 34px; }
+  .ix-row .perms::before { content: "└─ "; color: var(--t-muted); }
+  .ix-status .sb-host { display: none; }
+  .ix-status .sb-path { margin-left: 0; }
+}
+@media (max-width: 400px) { .ix-meta { display: none; } }
+
+/* static: two colour-split ghosts of the picture tear across it, noise on top (canvas drawn by js) */
+.ix-ghost { position: absolute; inset: 0; overflow: hidden; display: none; pointer-events: none; opacity: .85; }
+.intro[data-phase="static"] .ix-ghost { display: block; }
+.ix-ghost.a { filter: hue-rotate(-95deg) saturate(2.4); animation: ix-gA 310ms steps(1) infinite; }
+.ix-ghost.b { filter: hue-rotate(110deg) saturate(2); animation: ix-gB 270ms steps(1) infinite; }
+@keyframes ix-gA {
+  0% { clip-path: inset(6% 0 78% 0); transform: translateX(-14px); }
+  25% { clip-path: inset(42% 0 41% 0); transform: translateX(22px) skewX(-6deg); }
+  50% { clip-path: inset(71% 0 12% 0); transform: translateX(-30px); }
+  75% { clip-path: inset(24% 0 63% 0); transform: translateX(11px) skewX(4deg); }
+}
+@keyframes ix-gB {
+  0% { clip-path: inset(58% 0 22% 0); transform: translateX(26px); }
+  25% { clip-path: inset(12% 0 70% 0); transform: translateX(-18px) skewX(5deg); }
+  50% { clip-path: inset(84% 0 4% 0); transform: translateX(15px); }
+  75% { clip-path: inset(34% 0 49% 0); transform: translateX(-34px) skewX(-3deg); }
+}
+.ix-noise { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; image-rendering: pixelated; }
+.ix-line { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: #fff; box-shadow: 0 0 18px 4px rgba(190, 255, 170, .9); opacity: 0; pointer-events: none; }
+.intro[data-phase="off"] .ix-tube { animation: ix-off var(--off-ms, 520ms) cubic-bezier(.3, 0, .2, 1) both; }
+.intro[data-phase="off"] .ix-line { animation: ix-off-line var(--off-ms, 520ms) linear both; }
+.intro[data-phase="off"] .ix-noise { opacity: .25 !important; }
+@keyframes ix-off {
+  0% { transform: scale(1, 1); filter: brightness(1.6); }
+  34% { transform: scale(1, .004); filter: brightness(8); }
+  62% { transform: scale(.012, .004); filter: brightness(12); }
+  100% { transform: scale(.006, .003); filter: brightness(12); }
+}
+@keyframes ix-off-line { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 1; } }
+
+/* ---------- 4. pre-intro: the dot the tube left behind, stretched by the sound ---------- */
+.intro[data-phase="pre"] .ix-pre, .intro[data-phase="intro"] .ix-pre { visibility: visible; }
+.ix-pre { background: #000; pointer-events: none; }
+.intro[data-phase="intro"] .ix-pre { background: transparent; }
+.ix-beam, .ix-glow { position: absolute; left: 7%; right: 7%; top: 50%; transform-origin: 50% 50%; will-change: transform, opacity; }
+.ix-beam { height: 2px; margin-top: -1px; border-radius: 2px; opacity: 0; }
+.ix-beam.g { background: var(--t-green-2); box-shadow: 0 0 10px 1px rgba(74, 246, 38, .8); }
+.ix-beam.w { background: #fffdf2; box-shadow: 0 0 12px 2px rgba(255, 250, 225, .85); }
+.ix-glow { height: calc(var(--vh) * 34); margin-top: calc(var(--vh) * -17); opacity: 0; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 248, 222, .5) 0, rgba(255, 244, 205, .16) 30%, rgba(255, 240, 200, 0) 70%); }
+
+/* ---------- 5. newspaper stage ---------- */
+.intro[data-phase="intro"] .ix-stage, .intro[data-phase="bam"] .ix-stage, .intro.ix-stage-on .ix-stage { visibility: visible; }
+.ix-stage { opacity: 0; color: var(--n-ink); pointer-events: none; }
+.ix-desk { position: absolute; inset: 0; background: var(--n-desk); overflow: hidden; }
+.ix-desk::before { content: ""; position: absolute; inset: -60px; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .5; }
+.ix-desk::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, .62) 100%); }
+.ix-heat { position: absolute; inset: 0; opacity: 0; pointer-events: none; will-change: opacity; background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(255, 244, 214, .5) 0, rgba(255, 240, 200, .12) 45%, rgba(255, 240, 200, 0) 75%); }
+.ix-flashes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ix-pop {
+  position: absolute; left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; opacity: 0; border-radius: 50%; will-change: transform, opacity;
+  transform: translate(var(--px, 0px), var(--py, 0px)) scale(var(--ps, 1));
+  background: radial-gradient(circle, #fff 0, rgba(255, 255, 255, .97) 6%, rgba(255, 250, 232, .62) 15%, rgba(255, 246, 220, .26) 34%, rgba(255, 246, 220, 0) 70%);
+}
+.ix-pop::before { content: ""; position: absolute; left: -70%; right: -70%; top: 48.5%; height: 3%; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, 0) 100%); }
+.ix-pop::after { content: ""; position: absolute; top: -25%; bottom: -25%; left: 49%; width: 2%; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 255, 255, .8) 0, rgba(255, 255, 255, 0) 100%); }
+/* js sets --px --py --ps --po --pd on a pooled element and flips a/b (same keyframes twice) to fire it again */
+.ix-pop.a { animation: ix-pop-a var(--pd, 240ms) ease-out both; }
+.ix-pop.b { animation: ix-pop-b var(--pd, 240ms) ease-out both; }
+@keyframes ix-pop-a {
+  0% { opacity: var(--po, 1); transform: translate(var(--px), var(--py)) scale(calc(var(--ps) * .5)); }
+  20% { opacity: calc(var(--po, 1) * .85); transform: translate(var(--px), var(--py)) scale(var(--ps)); }
+  100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(calc(var(--ps) * 1.1)); }
+}
+@keyframes ix-pop-b {
+  0% { opacity: var(--po, 1); transform: translate(var(--px), var(--py)) scale(calc(var(--ps) * .5)); }
+  20% { opacity: calc(var(--po, 1) * .85); transform: translate(var(--px), var(--py)) scale(var(--ps)); }
+  100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(calc(var(--ps) * 1.1)); }
+}
+.ix-flashes--front { z-index: 8; }
+.ix-clips { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; }
+
+/* video clippings: a cut-out photo, printed (grey, hard contrast, dot screen, grain), laid down crooked */
+.ix-clip {
+  position: absolute; left: var(--x); top: var(--y); width: var(--w); margin: 0;
+  padding: calc(var(--w) * .032) calc(var(--w) * .032) calc(var(--w) * .04);
+  background: var(--n-paper); box-shadow: var(--n-shadow);
+  transform: rotate(var(--rot)); will-change: transform;
+}
+.ix-clip-photo { position: relative; width: 100%; padding-top: 75%; overflow: hidden; background: #1b1814; outline: 1px solid rgba(21, 18, 13, .55); outline-offset: -1px; }
+.ix-clip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; filter: grayscale(1) contrast(1.5) brightness(1.12) sepia(.22); }
+.ix-clip-photo::before { content: ""; position: absolute; inset: 0; z-index: 1; background-image: radial-gradient(circle at 50% 50%, rgba(18, 14, 9, .5) 0, rgba(18, 14, 9, .5) 30%, rgba(18, 14, 9, 0) 34%); background-size: 3px 3px; }
+.ix-clip-photo::after { content: ""; position: absolute; inset: -64px; z-index: 2; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .55; will-change: transform; animation: ix-grain .5s steps(1) infinite; }
+@keyframes ix-grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-31px, 17px); } 40% { transform: translate(23px, -42px); }
+  60% { transform: translate(-48px, -9px); } 80% { transform: translate(39px, 33px); }
+}
+/* a snare hit knocks every clipping: js sets --jd and flips ja/jb */
+.ix-clip.ja { animation: ix-jolt-a 200ms cubic-bezier(.2, .8, .3, 1); }
+.ix-clip.jb { animation: ix-jolt-b 200ms cubic-bezier(.2, .8, .3, 1); }
+@keyframes ix-jolt-a { from { transform: rotate(calc(var(--rot) + var(--jd, 0deg))); } to { transform: rotate(var(--rot)); } }
+@keyframes ix-jolt-b { from { transform: rotate(calc(var(--rot) + var(--jd, 0deg))); } to { transform: rotate(var(--rot)); } }
+.ix-clip--dead { visibility: hidden; }   /* its video file could not be loaded */
+/* portrait composition: every clipping lies wholly on the screen (2.2 units of margin cover the corners its slant swings out) */
+.ix-clip--hits-a  { --w: min(calc(var(--vw) * 50.5), calc(var(--vh) * 31)); --x: calc(var(--vw) * 2.2);  --y: calc(var(--vh) * 4.5);  --rot: -3.2deg; z-index: 2; }
+.ix-clip--hits-b  { --w: min(calc(var(--vw) * 50.5), calc(var(--vh) * 31)); --x: calc(var(--vw) * 97.8 - var(--w)); --y: calc(var(--vh) * 14.5); --rot: 2.6deg; z-index: 3; }
+.ix-clip--concert { --w: min(calc(var(--vw) * 46), calc(var(--vh) * 27)); --x: calc(var(--vw) * 2.2);  --y: calc(var(--vh) * 60);   --rot: 2.2deg; z-index: 2; }
+.ix-clip--bowling { --w: min(calc(var(--vw) * 46), calc(var(--vh) * 27)); --x: calc(var(--vw) * 97.8 - var(--w)); --y: calc(var(--vh) * 62.5); --rot: -2.8deg; z-index: 3; }
+.ix-clip--guns    { --w: min(calc(var(--vw) * 48), calc(var(--vh) * 28)); --x: calc(var(--vw) * 50 - var(--w) / 2); --y: calc(var(--vh) * 75.5); --rot: 1.4deg; z-index: 4; }
+.ix-reel { position: absolute; left: 50%; top: calc(var(--vh) * 47); width: min(calc(var(--vw) * 93), calc(var(--vh) * 60)); height: 0; margin-left: calc(min(calc(var(--vw) * 93), calc(var(--vh) * 60)) / -2); z-index: 6; }
+@media (min-aspect-ratio: 1/1) {
+  .ix-clip--hits-a  { --w: min(calc(var(--vw) * 31), calc(var(--vh) * 56)); --x: calc(var(--vw) * 2.5);  --y: calc(var(--vh) * 8);  --rot: -3.4deg; }
+  .ix-clip--hits-b  { --w: min(calc(var(--vw) * 31), calc(var(--vh) * 56)); --x: calc(var(--vw) * 97.5 - var(--w)); --y: calc(var(--vh) * 45); --rot: 2.8deg; }
+  .ix-clip--concert { --w: min(calc(var(--vw) * 22), calc(var(--vh) * 40)); --x: calc(var(--vw) * 60);   --y: calc(var(--vh) * 6);  --rot: 2.1deg; }
+  .ix-clip--bowling { --w: min(calc(var(--vw) * 22), calc(var(--vh) * 40)); --x: calc(var(--vw) * 13);   --y: calc(var(--vh) * 61); --rot: -2.3deg; }
+  .ix-clip--guns    { --w: min(calc(var(--vw) * 20), calc(var(--vh) * 36)); --x: calc(var(--vw) * 45);   --y: calc(var(--vh) * 70); --rot: 1.5deg; z-index: 2; }
+  .ix-reel { top: calc(var(--vh) * 49); width: min(calc(var(--vw) * 50), calc(var(--vh) * 92)); margin-left: calc(min(calc(var(--vw) * 50), calc(var(--vh) * 92)) / -2); }
+}
+/* a phone on its side: too short for a clipping under the reel, so that one goes above it */
+@media (min-aspect-ratio: 2/1) {
+  .ix-clip--guns { --x: calc(var(--vw) * 38.5); --y: calc(var(--vh) * 2.5); }
+  .ix-reel { top: calc(var(--vh) * 55); }
+}
+
+/* ---------- 6. matchup reel ---------- */
+.ix-card {
+  position: absolute; left: 0; right: 0; top: 0;
+  padding: calc(var(--cu) * 3.6) calc(var(--cu) * 5) calc(var(--cu) * 4.2);
+  background: var(--n-paper); color: var(--n-ink);
+  box-shadow: var(--n-shadow);
+  transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg));
+  visibility: hidden; will-change: transform;
+}
+.ix-card::before { content: ""; position: absolute; inset: 0; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .22; pointer-events: none; }
+.ix-card::after { content: ""; position: absolute; inset: 0; background: rgba(24, 17, 8, 0); pointer-events: none; transition: background-color .25s linear; }
+.ix-card.on { visibility: inherit; animation: ix-slap 150ms cubic-bezier(.2, .85, .3, 1) both; }
+.ix-card.under::after { background: rgba(24, 17, 8, .2); }
+.ix-card.on.still { animation: none; }
+@keyframes ix-slap {
+  0% { opacity: 0; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 2.4)) scale(1.24); }
+  45% { opacity: 1; }
+  100% { opacity: 1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1); }
+}
+.ix-card-in { position: relative; border-top: calc(var(--cu) * 1.1) solid var(--n-ink); }
+.ix-wk { display: flex; align-items: baseline; gap: calc(var(--cu) * 1.6); height: calc(var(--cu) * 10.5); border-bottom: 1px solid var(--n-ink); font-family: var(--n-head); font-weight: 900; font-style: italic; font-size: calc(var(--cu) * 7); line-height: calc(var(--cu) * 10.5); white-space: nowrap; }
+.ix-wk b { font-family: var(--n-scream); font-style: normal; font-weight: 400; font-size: calc(var(--cu) * 8.6); color: var(--n-red); }
+.ix-mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: calc(var(--cu) * 3); font-family: var(--n-scream); font-weight: 400; text-transform: uppercase; white-space: nowrap; }
+.ix-mrow--w { height: calc(var(--cu) * 18); }
+.ix-mrow--l { height: calc(var(--cu) * 12); color: var(--n-ink-3); border-top: 1px dashed var(--n-rule); }
+.ix-mrow--w + .ix-mrow--w { border-top: 1px dashed var(--n-rule); }
+.ix-name { min-width: 0; overflow: hidden; line-height: 1; padding: calc(var(--cu) * 1) 0; }
+.ix-name span { display: inline-block; padding: .06em .14em .02em; margin-left: -.14em; line-height: 1.02; letter-spacing: .005em; }
+.ix-mrow--w .ix-name { font-size: calc(var(--cu) * 13); }
+.ix-mrow--l .ix-name { font-size: calc(var(--cu) * 8.4); }
+.ix-mrow--w .ix-name span { background: linear-gradient(93deg, rgba(246, 224, 74, 0) 0, var(--n-hl) 2.5%, var(--n-hl) 97%, rgba(246, 224, 74, 0) 100%); transform: rotate(-.7deg); }
+.ix-pts { font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+.ix-mrow--w .ix-pts { font-size: calc(var(--cu) * 11.5); }
+.ix-mrow--l .ix-pts { font-size: calc(var(--cu) * 8); }
+.ix-measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: nowrap; font-family: var(--n-scream); font-size: 100px; line-height: 1; text-transform: uppercase; letter-spacing: .005em; padding: 0 .14em; }
+
+/* title card: what lies in the middle before the first matchup lands */
+.ix-title { text-align: center; padding-top: calc(var(--cu) * 5); padding-bottom: calc(var(--cu) * 5.5); visibility: inherit; }
+.ix-title .ix-mast { font-family: var(--n-mast); font-weight: 700; font-size: calc(var(--cu) * 12.6); line-height: 1.05; white-space: nowrap; overflow: hidden; padding: calc(var(--cu) * 3.4) 0 calc(var(--cu) * 2.6); border-bottom: calc(var(--cu) * .5) double var(--n-ink); border-bottom-width: 4px; }
+.ix-title .ix-ed { font-family: var(--n-scream); font-size: calc(var(--cu) * 7.4); line-height: 1; text-transform: uppercase; letter-spacing: .03em; padding-top: calc(var(--cu) * 3.6); white-space: nowrap; }
+
+/* ---------- 7. BAM ----------
+   Everything here is started by one class (.ix-bam-on) on the overlay, --bam-delay from the moment it is added: js adds
+   it a quarter of a second before the drop with the remaining time as the delay (0 when skipping), so the impact is
+   timed by the compositor. Only transform and opacity are animated. Each clipping, card and scrap already carries where
+   it is going (--fx --fy), how far it spins (--fr) and how long it takes (--fd): js sets them at layout time. */
+.intro.ix-open, .intro[data-phase="bam"], .intro[data-phase="done"] { background: transparent; }
+.intro[data-phase="bam"], .intro[data-phase="done"] { pointer-events: none; }
+/* the BAM layer exists (everything in it at opacity 0, already rasterized) from the moment the stage is laid out, so the impact frame is cheap */
+.intro.ix-stage-on .ix-bam, .intro[data-phase="bam"] .ix-bam { visibility: visible; pointer-events: none; }
+.intro.ix-bam-on .ix-desk, .intro.ix-bam-on .ix-flashes, .intro.ix-bam-on .ix-heat { animation: ix-vanish 16ms linear var(--bam-delay, 0ms) forwards; }
+@keyframes ix-vanish { to { opacity: 0; } }
+.intro.ix-bam-on .ix-clips { animation: ix-shake 440ms linear var(--bam-delay, 0ms) forwards; }
+@keyframes ix-shake {
+  0% { transform: translate(0, 0) scale(1.07); } 8% { transform: translate(-18px, 12px) scale(1.06); } 18% { transform: translate(15px, -13px) scale(1.045); }
+  30% { transform: translate(-12px, -8px) scale(1.03); } 44% { transform: translate(9px, 8px) scale(1.02); } 60% { transform: translate(-6px, 4px) scale(1.01); }
+  78% { transform: translate(3px, -3px); } 100% { transform: translate(0, 0); }
+}
+/* clippings: kicked out of place, then tumbling off the screen */
+.intro.ix-bam-on .ix-clip { animation: ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-on .ix-clip.ja { animation: ix-jolt-a 200ms cubic-bezier(.2, .8, .3, 1), ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-on .ix-clip.jb { animation: ix-jolt-b 200ms cubic-bezier(.2, .8, .3, 1), ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
+@keyframes ix-fly-clip {
+  0% { opacity: 1; transform: rotate(var(--rot)); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
+  12% { opacity: 1; transform: translate(calc(var(--fx) * .2), calc(var(--fy) * .2)) rotate(calc(var(--rot) + var(--fr) * .2)) scale(1.16); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
+  84% { opacity: 1; transform: translate(calc(var(--fx) * .94), calc(var(--fy) * .94)) rotate(calc(var(--rot) + var(--fr) * .94)) scale(1.3); animation-timing-function: linear; }
+  100% { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(calc(var(--rot) + var(--fr))) scale(1.3); }
+}
+.intro.ix-bam-on .ix-card.on, .intro.ix-bam-on .ix-title { animation: ix-fly-card var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
+@keyframes ix-fly-card {
+  0% { opacity: 1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
+  12% { opacity: 1; transform: translate(calc(var(--dx, 0px) + var(--fx) * .2), calc(-50% + var(--dy, 0px) + var(--fy) * .2)) rotate(calc(var(--r, 0deg) + var(--fr) * .2)) scale(1.16); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
+  84% { opacity: 1; transform: translate(calc(var(--dx, 0px) + var(--fx) * .94), calc(-50% + var(--dy, 0px) + var(--fy) * .94)) rotate(calc(var(--r, 0deg) + var(--fr) * .94)) scale(1.3); animation-timing-function: linear; }
+  100% { opacity: 0; transform: translate(calc(var(--dx, 0px) + var(--fx)), calc(-50% + var(--dy, 0px) + var(--fy))) rotate(calc(var(--r, 0deg) + var(--fr))) scale(1.3); }
+}
+.ix-white { position: absolute; inset: 0; background: #fff; opacity: 0; will-change: opacity; }
+.intro.ix-bam-on .ix-white { animation: ix-white 270ms cubic-bezier(.3, 0, .5, 1) var(--bam-delay, 0ms) forwards; }
+@keyframes ix-white { 0% { opacity: 1; } 24% { opacity: 1; } 100% { opacity: 0; } }
+/* the shock front: a zigzag band (shape set in js) thrown out from the middle of the screen */
+.ix-burst { position: absolute; left: 50%; top: 50%; width: 60vmin; height: 60vmin; margin: -30vmin 0 0 -30vmin; opacity: 0; background: var(--n-ink); will-change: transform, opacity; }
+.ix-burst.r { background: var(--n-red); }
+.intro.ix-bam-on .ix-burst { animation: ix-burst 440ms cubic-bezier(.12, .7, .25, 1) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-on .ix-burst.r { animation-name: ix-burst-r; animation-duration: 500ms; }
+@keyframes ix-burst { 0% { opacity: 1; transform: scale(.5) rotate(-10deg); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(6.4) rotate(4deg); } }
+@keyframes ix-burst-r { 0% { opacity: 1; transform: scale(.36) rotate(-10deg); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(4.9) rotate(4deg); } }
+/* scraps of paper and ink thrown from the middle */
+.ix-scrap { position: absolute; left: 50%; top: 50%; opacity: 0; background: var(--n-paper); outline: 1px solid rgba(21, 18, 13, .28); will-change: transform, opacity; }
+.ix-scrap.k { background: var(--n-ink); } .ix-scrap.r { background: var(--n-red); } .ix-scrap.p2 { background: var(--n-paper-3); }
+.ix-scrap.ln { background: repeating-linear-gradient(0deg, transparent 0, transparent 5px, rgba(21, 18, 13, .55) 5px, rgba(21, 18, 13, .55) 6.5px, transparent 6.5px, transparent 9px) 12% 50% / 76% 70% no-repeat, var(--n-paper); }
+.intro.ix-bam-on .ix-scrap { animation: ix-scrap var(--fd, 700ms) var(--bam-delay, 0ms) forwards; }
+@keyframes ix-scrap {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(.5); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
+  12% { opacity: 1; transform: translate(calc(var(--fx) * .3), calc(var(--fy) * .3)) rotate(calc(var(--fr) * .3)) scale(1.1); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
+  85% { opacity: 1; transform: translate(var(--fx), calc(var(--fy) + 20px)) rotate(var(--fr)) scale(1.1); animation-timing-function: linear; }
+  100% { opacity: 0; transform: translate(calc(var(--fx) * 1.06), calc(var(--fy) * 1.06 + 40px)) rotate(calc(var(--fr) * 1.06)) scale(1.1); }
+}
+
+/* ---------- 8. hold-to-skip ---------- */
+.ix-skip {
+  position: absolute; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+  display: none; align-items: center; justify-content: center; height: 44px; min-width: 138px; padding: 0 16px; cursor: pointer; overflow: hidden;
+  font: 500 12.5px/1 var(--t-mono); letter-spacing: .05em; white-space: nowrap;
+  color: var(--sk-fg, #4af626); background: var(--sk-bg, #000); border: 1px solid var(--sk-bd, #1f6e19);
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.intro:not([data-phase="gate"]):not([data-phase="bam"]):not([data-phase="done"]) .ix-skip { display: flex; }
+.ix-skip:focus-visible { outline: 2px solid var(--sk-fg, #4af626); outline-offset: 2px; }
+.ix-skip-fill { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--sk-fill-fg, #000); background: var(--sk-fill, #4af626); clip-path: inset(0 calc(100% - var(--charge, 0) * 100%) 0 0); }
+.ix-skip.is-hot { border-color: var(--sk-fill, #4af626); }
+.intro[data-skin="paper"] .ix-skip { --sk-fg: var(--n-ink); --sk-bg: var(--n-paper); --sk-bd: var(--n-ink); --sk-fill: var(--n-red); --sk-fill-fg: var(--n-paper); font-family: var(--n-data); box-shadow: 2px 2px 0 rgba(0, 0, 0, .55); }
+
+/* ---------- 9. reduced motion: no tearing, no shake, no grain crawl (flashes are switched off in js) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ix-ghost, .ix-clip-photo::after { animation: none !important; }
+  .intro.ix-bam-on .ix-clips { animation: none !important; }
+  .ix-clip.ja, .ix-clip.jb { animation: none; }
+  .ix-sound { animation: none; }
+}

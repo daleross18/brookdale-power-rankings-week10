@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- Development harness for the cutscene (js/intro.js + js/player.js + css/intro.css). Not linked from the site. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>intro harness</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Source+Serif+4:opsz,wght@8..60,400..700&family=UnifrakturCook:wght@700&display=swap">
+<link rel="stylesheet" href="css/intro.css">
+<style>
+  html, body { margin: 0; background: #ddd6c4; color: #15120f; overflow-x: hidden; }
+  #standin { max-width: 760px; margin: 0 auto; padding: 18px 16px 90px; font-family: "Source Serif 4", Georgia, serif; }
+  #standin h1 { font: 700 clamp(34px, 9vw, 64px)/1 "UnifrakturCook", serif; text-align: center; margin: 6px 0 8px; }
+  #standin h2 { font: 400 clamp(16px, 4.4vw, 24px)/1 "Anton", sans-serif; text-transform: uppercase; letter-spacing: .04em; text-align: center; margin: 0; padding: 8px 0; border-top: 3px double #15120d; border-bottom: 1px solid #15120d; }
+  #standin ol { list-style: none; margin: 14px 0 0; padding: 0; }
+  #standin li { display: flex; gap: 14px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid #b3a88e; font: 400 clamp(20px, 5.6vw, 30px)/1.05 "Anton", sans-serif; text-transform: uppercase; }
+  #standin li b { font-weight: 400; color: #b3241b; min-width: 1.6em; }
+  #standin.slam { animation: standin-slam 420ms cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes standin-slam { from { transform: scale(1.18); } to { transform: none; } }
+</style>
+</head>
+<body>
+<main id="standin"></main>
+<script src="js/data.js"></script>
+<script src="js/player.js"></script>
+<script src="js/intro.js"></script>
+<script>
+(function () {
+  var B = window.BROOKDALE, m = document.getElementById('standin');
+  var h1 = document.createElement('h1'); h1.textContent = B.league;
+  var h2 = document.createElement('h2'); h2.textContent = B.edition.title;
+  var ol = document.createElement('ol');
+  B.teams.forEach(function (t) { var li = document.createElement('li'), b = document.createElement('b'); b.textContent = t.rank; li.appendChild(b); li.appendChild(document.createTextNode(t.name)); ol.appendChild(li); });
+  m.appendChild(h1); m.appendChild(h2); m.appendChild(ol);
+  window.__ev = [];
+  if (INTRO.shouldPlay()) INTRO.start({
+    onBam: function () { window.__ev.push({ e: 'onBam', perf: performance.now(), song: PLAYER.jungle.currentTime }); m.classList.add('slam'); },
+    onDone: function () { window.__ev.push({ e: 'onDone', perf: performance.now(), song: PLAYER.jungle.currentTime }); }
+  });
+})();
+</script>
+</body>
+</html>
