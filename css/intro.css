@@ -1,12 +1,15 @@
 /* ============================================================================
    intro.css — the cutscene overlay built by js/intro.js (everything is scoped under .intro, classes prefixed ix-).
    Sections:
-     1  overlay + tokens          5  newspaper stage: desk, flashes, video clippings
-     2  gate                      6  matchup reel (title card + 45 cards)
+     1  overlay + tokens          5  newspaper stage: desk, flashes, headline banner, photo clippings
+     2  gate                      6  matchup reel (title card + 45 cards, flipped through)
      3  terminal + static + CRT   7  BAM
-     4  pre-intro beam            8  hold-to-skip        9  reduced motion
-   Layout units: js sets --vw / --vh (1% of the overlay, px) and --cu (1% of the reel width, px).
-   Two compositions: portrait (default) and landscape/desktop (@media (min-aspect-ratio: 1/1)).
+     4  pre-intro beam            8  hold-to-skip        9  ?reduce
+   Layout units: js sets --vw / --vh (1% of the overlay, px) and --cu (1% of the reel width, px). Where the reel and
+   the eleven photo clippings lie is computed in js (LAYOUT tables in js/intro.js) and written as inline styles.
+   Print look ("Spider-Verse print, toned down"): dot screens and hatching instead of soft shading, a teal and a rose
+   plate printed slightly out of register behind the big type and the photos, held poses (step-end) instead of easing.
+   Everything that moves animates transform / opacity only.
    ========================================================================== */
 
 /* ---------- 1. overlay + tokens ---------- */
@@ -184,12 +187,26 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 
 /* ---------- 5. newspaper stage ---------- */
 .intro[data-phase="intro"] .ix-stage, .intro[data-phase="bam"] .ix-stage, .intro.ix-stage-on .ix-stage { visibility: visible; }
+.ix-stage, .ix-bam { --n-teal: var(--fxp-teal, rgba(47, 143, 138, .82)); --n-rose: var(--fxp-rose, rgba(194, 69, 106, .74)); --n-must: var(--fxp-must, rgba(217, 165, 33, .9)); }   /* the plate inks of css/fx.css */
 .ix-stage { opacity: 0; color: var(--n-ink); pointer-events: none; }
-.ix-desk { position: absolute; inset: 0; background: var(--n-desk); overflow: hidden; }
-.ix-desk::before { content: ""; position: absolute; inset: -60px; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .5; }
-.ix-desk::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, .62) 100%); }
-.ix-heat { position: absolute; inset: 0; opacity: 0; pointer-events: none; will-change: opacity; background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(255, 244, 214, .5) 0, rgba(255, 240, 200, .12) 45%, rgba(255, 240, 200, 0) 75%); }
-.ix-flashes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* (the desk and the flash layers are composited layers from the start — will-change — because they are faded out by a
+   compositor animation at the BAM: promoted only when that is armed, they would be painted again just before the drop) */
+.ix-desk { position: absolute; inset: 0; overflow: hidden; will-change: opacity; background: radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, .62) 100%), var(--n-desk); }
+.ix-desk::before { content: ""; position: absolute; inset: -60px; background-size: 128px 128px; opacity: .5; }   /* the grain image itself: a rule written by js (grainSheet) */
+/* the light on the desk is a dot screen, not a glow (dots, with the desk's own colour closing in over them towards the edges) */
+.ix-desk::after {
+  content: ""; position: absolute; inset: 0; opacity: .3;
+  background:
+    radial-gradient(ellipse 62% 54% at 50% 54%, rgba(19, 21, 23, 0) 0, rgba(19, 21, 23, .45) 46%, var(--n-desk) 80%),
+    radial-gradient(circle at 50% 50%, rgba(235, 229, 213, .8) 0, rgba(235, 229, 213, .8) 27%, rgba(235, 229, 213, 0) 31%) 0 0 / 8px 8px;
+}
+/* the heat of the snare build: three rings of a dot screen, coarser towards the middle (js fades the whole layer in) */
+.ix-heat { position: absolute; inset: 0; overflow: hidden; opacity: 0; pointer-events: none; will-change: opacity; }   /* (clipped: the rings are wider than the screen, the layer need not be) */
+.ix-heat i { position: absolute; left: 50%; top: 52%; width: calc(var(--vw) * var(--rw)); height: calc(var(--vh) * var(--rh)); margin: calc(var(--vh) * var(--rh) / -2) 0 0 calc(var(--vw) * var(--rw) / -2); border-radius: 50%; }
+.ix-heat i:nth-child(1) { --rw: 150; --rh: 104; background: radial-gradient(circle at 50% 50%, rgba(255, 246, 220, .5) 0, rgba(255, 246, 220, .5) 20%, rgba(255, 246, 220, 0) 24%) 0 0 / 7px 7px; }
+.ix-heat i:nth-child(2) { --rw: 104; --rh: 72; background: radial-gradient(circle at 50% 50%, rgba(255, 246, 220, .6) 0, rgba(255, 246, 220, .6) 30%, rgba(255, 246, 220, 0) 34%) 0 0 / 7px 7px; }
+.ix-heat i:nth-child(3) { --rw: 62; --rh: 42; background: radial-gradient(circle at 50% 50%, rgba(255, 246, 220, .7) 0, rgba(255, 246, 220, .7) 40%, rgba(255, 246, 220, 0) 44%) 0 0 / 7px 7px; }
+.ix-flashes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; will-change: opacity; }
 .ix-pop {
   position: absolute; left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; opacity: 0; border-radius: 50%; will-change: transform, opacity;
   transform: translate(var(--px, 0px), var(--py, 0px)) scale(var(--ps, 1));
@@ -213,94 +230,221 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .ix-flashes--front { z-index: 8; }
 .ix-clips { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; }
 
-/* video clippings: a cut-out photo, printed (grey, hard contrast, dot screen, grain), laid down crooked */
-.ix-clip {
-  position: absolute; left: var(--x); top: var(--y); width: var(--w); margin: 0;
-  padding: calc(var(--w) * .032) calc(var(--w) * .032) calc(var(--w) * .04);
-  background: var(--n-paper); box-shadow: var(--n-shadow);
-  transform: rotate(var(--rot)); will-change: transform;
+/* the edition headline. The element also carries the front page's own classes (.fp-banner, .fp-banner__text,
+   .headline, .fp-banner__kick), so css/front.css and css/fx.css draw it exactly like the banner on the page; the rules
+   here place it across the top of the stage and repeat that look where those sheets are not loaded (_intro.html).
+   At the BAM it drops into the page banner's place (section 7). */
+.intro .ix-banner {                              /* placement: nothing written for the page's banner may undo it */
+  position: absolute; left: 0; right: 0; top: 0; z-index: 9; margin: 0;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) var(--gutter, 16px) 9px;
+  transform-origin: 50% 0; will-change: transform, opacity;
 }
-.ix-clip-photo { position: relative; width: 100%; padding-top: 75%; overflow: hidden; background: #1b1814; outline: 1px solid rgba(21, 18, 13, .55); outline-offset: -1px; }
-.ix-clip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; filter: grayscale(1) contrast(1.5) brightness(1.12) sepia(.22); }
-.ix-clip-photo::before { content: ""; position: absolute; inset: 0; z-index: 1; background-image: radial-gradient(circle at 50% 50%, rgba(18, 14, 9, .5) 0, rgba(18, 14, 9, .5) 30%, rgba(18, 14, 9, 0) 34%); background-size: 3px 3px; }
-.ix-clip-photo::after { content: ""; position: absolute; inset: -64px; z-index: 2; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .55; will-change: transform; animation: ix-grain .5s steps(1) infinite; }
-@keyframes ix-grain {
-  0% { transform: translate(0, 0); } 20% { transform: translate(-31px, 17px); } 40% { transform: translate(23px, -42px); }
-  60% { transform: translate(-48px, -9px); } 80% { transform: translate(39px, 33px); }
+.ix-banner { border-bottom: 3px solid var(--n-ink); background: var(--paper, #ddd6c4); text-align: center; }   /* the look: css/front.css + css/fx.css say the same or more */
+.ix-banner .ix-banner-text {
+  position: relative; isolation: isolate; margin: 0; white-space: nowrap;
+  font-family: var(--n-scream); font-weight: 400; line-height: 1; text-transform: uppercase; letter-spacing: .004em; color: var(--n-ink);
+  font-size: min(clamp(1.75rem, 8.4vw, 5.25rem), calc(var(--vh) * 11.5));      /* the page's size, held back on a phone on its side */
 }
-/* a snare hit knocks every clipping: js sets --jd and flips ja/jb */
-.ix-clip.ja { animation: ix-jolt-a 200ms cubic-bezier(.2, .8, .3, 1); }
-.ix-clip.jb { animation: ix-jolt-b 200ms cubic-bezier(.2, .8, .3, 1); }
-@keyframes ix-jolt-a { from { transform: rotate(calc(var(--rot) + var(--jd, 0deg))); } to { transform: rotate(var(--rot)); } }
-@keyframes ix-jolt-b { from { transform: rotate(calc(var(--rot) + var(--jd, 0deg))); } to { transform: rotate(var(--rot)); } }
-.ix-clip--dead { visibility: hidden; }   /* its video file could not be loaded */
-/* portrait composition: every clipping lies wholly on the screen (2.2 units of margin cover the corners its slant swings out) */
-.ix-clip--hits-a  { --w: min(calc(var(--vw) * 50.5), calc(var(--vh) * 31)); --x: calc(var(--vw) * 2.2);  --y: calc(var(--vh) * 4.5);  --rot: -3.2deg; z-index: 2; }
-.ix-clip--hits-b  { --w: min(calc(var(--vw) * 50.5), calc(var(--vh) * 31)); --x: calc(var(--vw) * 97.8 - var(--w)); --y: calc(var(--vh) * 14.5); --rot: 2.6deg; z-index: 3; }
-.ix-clip--concert { --w: min(calc(var(--vw) * 46), calc(var(--vh) * 27)); --x: calc(var(--vw) * 2.2);  --y: calc(var(--vh) * 60);   --rot: 2.2deg; z-index: 2; }
-.ix-clip--bowling { --w: min(calc(var(--vw) * 46), calc(var(--vh) * 27)); --x: calc(var(--vw) * 97.8 - var(--w)); --y: calc(var(--vh) * 62.5); --rot: -2.8deg; z-index: 3; }
-.ix-clip--guns    { --w: min(calc(var(--vw) * 48), calc(var(--vh) * 28)); --x: calc(var(--vw) * 50 - var(--w) / 2); --y: calc(var(--vh) * 75.5); --rot: 1.4deg; z-index: 4; }
-.ix-reel { position: absolute; left: 50%; top: calc(var(--vh) * 47); width: min(calc(var(--vw) * 93), calc(var(--vh) * 60)); height: 0; margin-left: calc(min(calc(var(--vw) * 93), calc(var(--vh) * 60)) / -2); z-index: 6; }
-@media (min-aspect-ratio: 1/1) {
-  .ix-clip--hits-a  { --w: min(calc(var(--vw) * 31), calc(var(--vh) * 56)); --x: calc(var(--vw) * 2.5);  --y: calc(var(--vh) * 8);  --rot: -3.4deg; }
-  .ix-clip--hits-b  { --w: min(calc(var(--vw) * 31), calc(var(--vh) * 56)); --x: calc(var(--vw) * 97.5 - var(--w)); --y: calc(var(--vh) * 45); --rot: 2.8deg; }
-  .ix-clip--concert { --w: min(calc(var(--vw) * 22), calc(var(--vh) * 40)); --x: calc(var(--vw) * 60);   --y: calc(var(--vh) * 6);  --rot: 2.1deg; }
-  .ix-clip--bowling { --w: min(calc(var(--vw) * 22), calc(var(--vh) * 40)); --x: calc(var(--vw) * 13);   --y: calc(var(--vh) * 61); --rot: -2.3deg; }
-  .ix-clip--guns    { --w: min(calc(var(--vw) * 20), calc(var(--vh) * 36)); --x: calc(var(--vw) * 45);   --y: calc(var(--vh) * 70); --rot: 1.5deg; z-index: 2; }
-  .ix-reel { top: calc(var(--vh) * 49); width: min(calc(var(--vw) * 50), calc(var(--vh) * 92)); margin-left: calc(min(calc(var(--vw) * 50), calc(var(--vh) * 92)) / -2); }
+.ix-banner .ix-banner-kick { color: var(--n-red); }
+/* plates at rest: a teal sliver on one side of the ink and a rose one on the other; red type is rose + mustard
+   (:where = no specificity, so css/fx.css, which loads later and says the same, has the last word) */
+:where(.ix-banner-text, .ix-card) { --o: max(1px, .019em); }
+:where(.ix-banner-text, .ix-mrow--w .ix-name span, .ix-mrow--w .ix-pts) { text-shadow: calc(var(--o) * -1) 0 0 var(--n-teal), var(--o) calc(var(--o) * .45) 0 var(--n-rose); }
+:where(.ix-banner-kick, .ix-wk b) { text-shadow: calc(var(--o) * -1) 0 0 var(--n-must), var(--o) calc(var(--o) * .45) 0 var(--n-rose); }
+/* plates in motion: the same lettering once more per plate (spans here, ::before / ::after from data-t on the reel),
+   invisible at rest. A snare hit throws them out of register for three held frames — the poses of fx.css's fx-sep,
+   as transforms: js flips ha / hb on the banner and on the card on top of the reel. --sx: the side a plate slips to. */
+.ix-plate { position: absolute; left: 0; right: 0; top: 0; z-index: -1; opacity: 0; pointer-events: none; text-shadow: none; will-change: transform, opacity; }
+.ix-plate.t { --sx: -1; color: var(--n-teal); }
+.ix-plate.r { --sx: 1; color: var(--n-rose); }
+.ix-plate.t .ix-plate-kick { color: var(--n-must); }
+.ix-banner.ha .ix-plate { animation: ix-sep-a 230ms step-end; }
+.ix-banner.hb .ix-plate { animation: ix-sep-b 230ms step-end; }
+@keyframes ix-sep-a {
+  0% { opacity: 1; transform: translate(calc(var(--o) * 7 * var(--sx)), calc(var(--o) * -1.3 * var(--sx))); }
+  34% { opacity: 1; transform: translate(calc(var(--o) * -4.2 * var(--sx)), calc(var(--o) * 1)); }
+  67% { opacity: 1; transform: translate(calc(var(--o) * 2.7 * var(--sx)), calc(var(--o) * .6)); }
+  100% { opacity: 0; transform: none; }
 }
-/* a phone on its side: too short for a clipping under the reel, so that one goes above it */
-@media (min-aspect-ratio: 2/1) {
-  .ix-clip--guns { --x: calc(var(--vw) * 38.5); --y: calc(var(--vh) * 2.5); }
-  .ix-reel { top: calc(var(--vh) * 55); }
+@keyframes ix-sep-b {
+  0% { opacity: 1; transform: translate(calc(var(--o) * 7 * var(--sx)), calc(var(--o) * -1.3 * var(--sx))); }
+  34% { opacity: 1; transform: translate(calc(var(--o) * -4.2 * var(--sx)), calc(var(--o) * 1)); }
+  67% { opacity: 1; transform: translate(calc(var(--o) * 2.7 * var(--sx)), calc(var(--o) * .6)); }
+  100% { opacity: 0; transform: none; }
+}
+@keyframes ix-sep-c {
+  0% { opacity: 1; transform: translate(calc(var(--o) * 7 * var(--sx)), calc(var(--o) * -1.3 * var(--sx))); }
+  34% { opacity: 1; transform: translate(calc(var(--o) * -4.2 * var(--sx)), calc(var(--o) * 1)); }
+  67% { opacity: 1; transform: translate(calc(var(--o) * 2.7 * var(--sx)), calc(var(--o) * .6)); }
+  100% { opacity: 0; transform: none; }
 }
 
-/* ---------- 6. matchup reel ---------- */
+/* photo clippings: eleven cut-outs scattered over the desk (place, size --w, slant --rot and stacking from js). Each is
+   a canvas painted by js/atlas.js, printed like a newspaper photo: grey, hard contrast, dot screen, a hatched corner,
+   crawling grain, the teal and rose plates showing at its edges.
+   figure.ix-clip (where it lies; thrown at the BAM) > .ix-clip-j (knocked by the snare hits) > .ix-clip-p (the paper;
+   jitters between three held poses) > .ix-clip-photo — one box per move, so each move runs on the compositor.
+   The jitter of the papers and the crawl of the grain are stepped by js (boil() in js/intro.js: an inline transform
+   on .ix-clip-p, data-g on .ix-clips), ten steps a second — not CSS animations, which restyle their element on
+   every frame for as long as they run. */
+.ix-clip { position: absolute; width: var(--w, 0px); margin: 0; transform: rotate(var(--rot, 0deg)); will-change: transform; }
+.ix-clip-p {
+  padding: calc(var(--w) * .032) calc(var(--w) * .032) calc(var(--w) * .04);
+  background: var(--n-paper); box-shadow: var(--n-shadow);
+  will-change: transform;
+}
+.ix-clip-photo {
+  --pm: clamp(1.5px, calc(var(--w) * .011), 3px);
+  position: relative; width: 100%; padding-top: 75%; overflow: hidden; background: #1b1814;
+  outline: 1.5px solid var(--n-ink); outline-offset: -1px;
+  box-shadow: calc(var(--pm) * -1) calc(var(--pm) * -.6) 0 var(--n-teal), var(--pm) calc(var(--pm) * .6) 0 var(--n-rose);
+}
+.ix-clip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; filter: grayscale(1) contrast(1.5) brightness(1.12) sepia(.22); }
+.ix-clip-photo::before {
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 75' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cpattern id='h' width='4.4' height='4.4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'%3E%3Crect width='1.5' height='4.4' fill='%2315120f' fill-opacity='.62'/%3E%3C/pattern%3E%3C/defs%3E%3Cpolygon points='100,36 100,75 52,75' fill='url(%23h)'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 50%, rgba(18, 14, 9, .5) 0, rgba(18, 14, 9, .5) 30%, rgba(18, 14, 9, 0) 34%);
+  background-size: 100% 100%, var(--dot, 3px) var(--dot, 3px);
+}
+.ix-clip:nth-child(even) .ix-clip-photo::before { transform: scale(-1, -1); }   /* the hatched corner: lower right on some, upper left on the others */
+/* (the grain is noise: a shift of a few px is a new frame of it, so the layer is only 18px larger than the photo each way) */
+.ix-clip-photo::after { content: ""; position: absolute; inset: -18px; z-index: 2; background-size: 128px 128px; opacity: .55; will-change: transform; }
+.ix-clips[data-g="1"] .ix-clip-photo::after { transform: translate(-11px, 7px); }
+.ix-clips[data-g="2"] .ix-clip-photo::after { transform: translate(9px, -16px); }
+.ix-clips[data-g="3"] .ix-clip-photo::after { transform: translate(-17px, -5px); }
+.ix-clips[data-g="4"] .ix-clip-photo::after { transform: translate(14px, 12px); }
+/* a snare hit knocks every clipping (three held frames): js sets --jd on .ix-clip-j and flips ja/jb on it */
+@property --jd { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.ix-clip-j.ja { animation: ix-jolt-a 200ms steps(3, end); }
+.ix-clip-j.jb { animation: ix-jolt-b 200ms steps(3, end); }
+@keyframes ix-jolt-a { from { transform: rotate(var(--jd, 0deg)) scale(1.03); } to { transform: none; } }
+@keyframes ix-jolt-b { from { transform: rotate(var(--jd, 0deg)) scale(1.03); } to { transform: none; } }
+.ix-clips--dead .ix-clip { visibility: hidden; }   /* the pictures could not be loaded: no empty frames on the desk */
+.ix-reel { position: absolute; height: 0; z-index: 6; }
+
+/* ---------- 6. matchup reel ----------
+   A pile of clippings. js gives each card one of: .on (waiting in the pile) / .on.top (the one being read) /
+   .on.top.lit (just uncovered: snaps down while a wash of light fades off it) / .on.out (flipped up and over its top
+   edge: two held poses of the card lifting, then .ix-flap shows its edge and its back, then it is gone). */
 .ix-card {
   position: absolute; left: 0; right: 0; top: 0;
   padding: calc(var(--cu) * 3.6) calc(var(--cu) * 5) calc(var(--cu) * 4.2);
   background: var(--n-paper); color: var(--n-ink);
   box-shadow: var(--n-shadow);
+  transform-origin: 50% 0;
   transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg));
   visibility: hidden; will-change: transform;
 }
-.ix-card::before { content: ""; position: absolute; inset: 0; background-image: var(--ix-grain); background-size: 128px 128px; opacity: .22; pointer-events: none; }
-.ix-card::after { content: ""; position: absolute; inset: 0; background: rgba(24, 17, 8, 0); pointer-events: none; transition: background-color .25s linear; }
-.ix-card.on { visibility: inherit; animation: ix-slap 150ms cubic-bezier(.2, .85, .3, 1) both; }
-.ix-card.under::after { background: rgba(24, 17, 8, .2); }
-.ix-card.on.still { animation: none; }
-@keyframes ix-slap {
-  0% { opacity: 0; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 2.4)) scale(1.24); }
-  45% { opacity: 1; }
-  100% { opacity: 1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1); }
+.ix-card::before { content: ""; position: absolute; inset: 0; background-size: 128px 128px; opacity: .22; pointer-events: none; }
+.ix-card.on { visibility: inherit; }
+.ix-card.lit { animation: ix-reveal 140ms step-end; }
+.ix-card.out { animation: ix-flip var(--flip-ms, 230ms) step-end forwards; }
+@keyframes ix-flip {
+  0% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(30deg); }
+  22% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(61deg) skewX(-4deg); }
+  44%, 100% { opacity: 0; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
 }
+@keyframes ix-reveal {
+  0% { transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
+  46% { transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
+  100% { transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
+}
+/* the back of the clipping going over (its edge, then its back: bare stock, dot screen, hatching along the cut) and the
+   wash of light on the one it uncovers. One element each for the whole reel, lying as the card in question lies
+   (--dx --dy --r and z-index copied by js, which flips a/b): no card is ever repainted by a turn. */
+.ix-flap, .ix-lit {
+  position: absolute; left: 0; right: 0; top: 0; height: calc(var(--cu) * 49.4); opacity: 0; pointer-events: none;
+  transform-origin: 50% 0; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); will-change: transform, opacity;
+}
+.ix-flap {
+  background:
+    repeating-linear-gradient(135deg, rgba(21, 18, 15, .34) 0, rgba(21, 18, 15, .34) 1.5px, rgba(21, 18, 15, 0) 1.5px, rgba(21, 18, 15, 0) 6px) 0 0 / 100% 34% no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, .26) 0, rgba(21, 18, 15, .26) 30%, rgba(21, 18, 15, 0) 34%) 0 0 / 5px 5px,
+    #f3eedf;
+  box-shadow: var(--n-shadow);
+}
+.ix-lit { background: #fffdf3; }
+.ix-flap.a { animation: ix-flap-a var(--flip-ms, 230ms) step-end both; }
+.ix-flap.b { animation: ix-flap-b var(--flip-ms, 230ms) step-end both; }
+@keyframes ix-flap-a {
+  0% { opacity: 0; }
+  44% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  64% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
+  84%, 100% { opacity: 0; }
+}
+@keyframes ix-flap-b {
+  0% { opacity: 0; }
+  44% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(85deg); }
+  64% { opacity: 1; transform: perspective(calc(var(--cu) * 230)) translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) rotateX(112deg); }
+  84%, 100% { opacity: 0; }
+}
+.ix-lit.a { animation: ix-lit-a 210ms step-end both; }
+.ix-lit.b { animation: ix-lit-b 210ms step-end both; }
+@keyframes ix-lit-a {
+  0% { opacity: .8; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
+  30% { opacity: .44; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
+  60% { opacity: .17; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
+  100% { opacity: 0; }
+}
+@keyframes ix-lit-b {
+  0% { opacity: .8; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(calc(var(--r, 0deg) * 1.5 + .5deg)) scale(1.04); }
+  30% { opacity: .44; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1.014); }
+  60% { opacity: .17; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)); }
+  100% { opacity: 0; }
+}
+/* the flash of a turn: a bloom behind the pile (js flips a/b), plus a glint from the flash pool on a corner of the card.
+   (drawn at half size and scaled up: a glow does not need the pixels) */
+.ix-bloom {
+  position: absolute; left: 9%; right: 9%; top: calc(var(--cu) * -32); height: calc(var(--cu) * 64); opacity: 0; pointer-events: none; will-change: transform, opacity;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255, 252, 240, .95) 0, rgba(255, 250, 232, .55) 36%, rgba(255, 246, 220, 0) 70%);
+}
+.ix-bloom.a { animation: ix-bloom-a 220ms step-end both; }
+.ix-bloom.b { animation: ix-bloom-b 220ms step-end both; }
+@keyframes ix-bloom-a { 0% { opacity: .95; transform: scale(1.68); } 28% { opacity: .6; transform: scale(2); } 56% { opacity: .26; transform: scale(2.14); } 100% { opacity: 0; transform: scale(2.14); } }
+@keyframes ix-bloom-b { 0% { opacity: .95; transform: scale(1.68); } 28% { opacity: .6; transform: scale(2); } 56% { opacity: .26; transform: scale(2.14); } 100% { opacity: 0; transform: scale(2.14); } }
+
 .ix-card-in { position: relative; border-top: calc(var(--cu) * 1.1) solid var(--n-ink); }
 .ix-wk { display: flex; align-items: baseline; gap: calc(var(--cu) * 1.6); height: calc(var(--cu) * 10.5); border-bottom: 1px solid var(--n-ink); font-family: var(--n-head); font-weight: 900; font-style: italic; font-size: calc(var(--cu) * 7); line-height: calc(var(--cu) * 10.5); white-space: nowrap; }
-.ix-wk b { font-family: var(--n-scream); font-style: normal; font-weight: 400; font-size: calc(var(--cu) * 8.6); color: var(--n-red); }
+.ix-wk b { position: relative; isolation: isolate; display: inline-block; font-family: var(--n-scream); font-style: normal; font-weight: 400; font-size: calc(var(--cu) * 8.6); color: var(--n-red); }
 .ix-mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: calc(var(--cu) * 3); font-family: var(--n-scream); font-weight: 400; text-transform: uppercase; white-space: nowrap; }
 .ix-mrow--w { height: calc(var(--cu) * 18); }
 .ix-mrow--l { height: calc(var(--cu) * 12); color: var(--n-ink-3); border-top: 1px dashed var(--n-rule); }
 .ix-mrow--w + .ix-mrow--w { border-top: 1px dashed var(--n-rule); }
 .ix-name { min-width: 0; overflow: hidden; line-height: 1; padding: calc(var(--cu) * 1) 0; }
-.ix-name span { display: inline-block; padding: .06em .14em .02em; margin-left: -.14em; line-height: 1.02; letter-spacing: .005em; }
+.ix-name span { position: relative; display: inline-block; padding: .06em .14em .02em; margin-left: -.14em; line-height: 1.02; letter-spacing: .005em; }
 .ix-mrow--w .ix-name { font-size: calc(var(--cu) * 13); }
 .ix-mrow--l .ix-name { font-size: calc(var(--cu) * 8.4); }
 .ix-mrow--w .ix-name span { background: linear-gradient(93deg, rgba(246, 224, 74, 0) 0, var(--n-hl) 2.5%, var(--n-hl) 97%, rgba(246, 224, 74, 0) 100%); transform: rotate(-.7deg); }
-.ix-pts { font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+.ix-pts { position: relative; isolation: isolate; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
 .ix-mrow--w .ix-pts { font-size: calc(var(--cu) * 11.5); }
 .ix-mrow--l .ix-pts { font-size: calc(var(--cu) * 8); }
+/* the plates of the big type (week number, winner, winning score) for the snare hits: see .ix-plate in section 5 */
+.ix-card [data-t]::before, .ix-card [data-t]::after { content: attr(data-t); position: absolute; inset: 0; z-index: -1; padding: inherit; opacity: 0; pointer-events: none; text-shadow: none; }
+.ix-card.hit.on [data-t]::before, .ix-card.hit.on [data-t]::after { will-change: transform, opacity; }   /* the cards of the snare build: layers before the hit, not at it */
+.ix-card [data-t]::before { --sx: -1; color: var(--n-teal); }
+.ix-card [data-t]::after { --sx: 1; color: var(--n-rose); }
+.ix-card .ix-wk b::before { color: var(--n-must); }
+.ix-card.ha [data-t]::before, .ix-card.ha [data-t]::after { animation: ix-sep-a 230ms step-end; }
+.ix-card.hb [data-t]::before, .ix-card.hb [data-t]::after { animation: ix-sep-b 230ms step-end; }
 .ix-measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: nowrap; font-family: var(--n-scream); font-size: 100px; line-height: 1; text-transform: uppercase; letter-spacing: .005em; padding: 0 .14em; }
 
-/* title card: what lies in the middle before the first matchup lands */
-.ix-title { text-align: center; padding-top: calc(var(--cu) * 5); padding-bottom: calc(var(--cu) * 5.5); visibility: inherit; }
+/* title card: what lies on top of the pile before the first matchup is turned up */
+.ix-title { text-align: center; padding-top: calc(var(--cu) * 5); padding-bottom: calc(var(--cu) * 5.5); }
 .ix-title .ix-mast { font-family: var(--n-mast); font-weight: 700; font-size: calc(var(--cu) * 12.6); line-height: 1.05; white-space: nowrap; overflow: hidden; padding: calc(var(--cu) * 3.4) 0 calc(var(--cu) * 2.6); border-bottom: calc(var(--cu) * .5) double var(--n-ink); border-bottom-width: 4px; }
 .ix-title .ix-ed { font-family: var(--n-scream); font-size: calc(var(--cu) * 7.4); line-height: 1; text-transform: uppercase; letter-spacing: .03em; padding-top: calc(var(--cu) * 3.6); white-space: nowrap; }
 
 /* ---------- 7. BAM ----------
-   Everything here is started by one class (.ix-bam-on) on the overlay, --bam-delay from the moment it is added: js adds
-   it a quarter of a second before the drop with the remaining time as the delay (0 when skipping), so the impact is
-   timed by the compositor. Only transform and opacity are animated. Each clipping, card and scrap already carries where
-   it is going (--fx --fy), how far it spins (--fr) and how long it takes (--fd): js sets them at layout time. */
+   Everything here is started by two classes on the overlay — .ix-bam-fx (the impact graphics) and, a frame later,
+   .ix-bam-on (the stage) — each --bam-delay after it is added: js adds them just under half a second before the drop
+   with the remaining time as the delay (both at once, delay 0, when skipping), so the impact is timed by the
+   compositor. --bam-delay is written on each animated element (it does not inherit: handed down from the overlay it
+   would restyle all of it in the frame that arms the impact). Only transform and opacity are animated. Each clipping,
+   card and scrap already carries where it is going (--fx --fy), how far it spins (--fr) and how long it takes (--fd):
+   js sets them at layout time.
+   The impact frame: white flash, action lines, a starburst with its colour plates knocked apart, the zigzag shock
+   front, scraps and ink dots, every clipping thrown outward — and the headline banner dropping into its place on the page. */
+@property --bam-delay { syntax: "<time>"; inherits: false; initial-value: 0ms; }
 .intro.ix-open, .intro[data-phase="bam"], .intro[data-phase="done"] { background: transparent; }
 .intro[data-phase="bam"], .intro[data-phase="done"] { pointer-events: none; }
 /* the BAM layer exists (everything in it at opacity 0, already rasterized) from the moment the stage is laid out, so the impact frame is cheap */
@@ -313,17 +457,28 @@ html.intro-active, html.intro-active body { overflow: hidden; }
   30% { transform: translate(-12px, -8px) scale(1.03); } 44% { transform: translate(9px, 8px) scale(1.02); } 60% { transform: translate(-6px, 4px) scale(1.01); }
   78% { transform: translate(3px, -3px); } 100% { transform: translate(0, 0); }
 }
+/* the banner: three held poses down onto the front page's own banner (--bx --by --bs from js), where it holds until the
+   page's banner shows through in its place; with no banner on the page to land on, it leaves upward */
+.intro.ix-bam-on .ix-banner { animation: ix-banner-off 300ms cubic-bezier(.5, 0, .9, .5) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-on .ix-banner--land { animation: ix-banner-land 760ms step-end var(--bam-delay, 0ms) forwards; }
+@keyframes ix-banner-off { to { transform: translateY(-140%); } }
+@keyframes ix-banner-land {
+  0% { opacity: 1; transform: translate(calc(var(--bx) * .34), calc(var(--by) * .34)) scale(calc(1 + (var(--bs) - 1) * .34)); }
+  9% { opacity: 1; transform: translate(calc(var(--bx) * .8), calc(var(--by) * .8)) scale(calc(1 + (var(--bs) - 1) * .8)); }
+  17% { opacity: 1; transform: translate(var(--bx), calc(var(--by) + 5px)) scale(var(--bs)); }
+  25% { opacity: 1; transform: translate(var(--bx), var(--by)) scale(var(--bs)); }
+  82%, 100% { opacity: 0; transform: translate(var(--bx), var(--by)) scale(var(--bs)); }
+}
+.intro .ix-banner.kick .ix-plate { animation: ix-sep-c 260ms step-end; }   /* js adds .kick in the BAM frame (so the last snare hit, after the arming, still gets its own) */
 /* clippings: kicked out of place, then tumbling off the screen */
 .intro.ix-bam-on .ix-clip { animation: ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
-.intro.ix-bam-on .ix-clip.ja { animation: ix-jolt-a 200ms cubic-bezier(.2, .8, .3, 1), ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
-.intro.ix-bam-on .ix-clip.jb { animation: ix-jolt-b 200ms cubic-bezier(.2, .8, .3, 1), ix-fly-clip var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
 @keyframes ix-fly-clip {
   0% { opacity: 1; transform: rotate(var(--rot)); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
   12% { opacity: 1; transform: translate(calc(var(--fx) * .2), calc(var(--fy) * .2)) rotate(calc(var(--rot) + var(--fr) * .2)) scale(1.16); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
   84% { opacity: 1; transform: translate(calc(var(--fx) * .94), calc(var(--fy) * .94)) rotate(calc(var(--rot) + var(--fr) * .94)) scale(1.3); animation-timing-function: linear; }
   100% { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(calc(var(--rot) + var(--fr))) scale(1.3); }
 }
-.intro.ix-bam-on .ix-card.on, .intro.ix-bam-on .ix-title { animation: ix-fly-card var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-on .ix-card.on:not(.out) { animation: ix-fly-card var(--fd, 760ms) var(--bam-delay, 0ms) forwards; }
 @keyframes ix-fly-card {
   0% { opacity: 1; transform: translate(var(--dx, 0px), calc(-50% + var(--dy, 0px))) rotate(var(--r, 0deg)) scale(1); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
   12% { opacity: 1; transform: translate(calc(var(--dx, 0px) + var(--fx) * .2), calc(-50% + var(--dy, 0px) + var(--fy) * .2)) rotate(calc(var(--r, 0deg) + var(--fr) * .2)) scale(1.16); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
@@ -331,20 +486,65 @@ html.intro-active, html.intro-active body { overflow: hidden; }
   100% { opacity: 0; transform: translate(calc(var(--dx, 0px) + var(--fx)), calc(-50% + var(--dy, 0px) + var(--fy))) rotate(calc(var(--r, 0deg) + var(--fr))) scale(1.3); }
 }
 .ix-white { position: absolute; inset: 0; background: #fff; opacity: 0; will-change: opacity; }
-.intro.ix-bam-on .ix-white { animation: ix-white 270ms cubic-bezier(.3, 0, .5, 1) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-fx .ix-white { animation: ix-white 270ms cubic-bezier(.3, 0, .5, 1) var(--bam-delay, 0ms) forwards; }
 @keyframes ix-white { 0% { opacity: 1; } 24% { opacity: 1; } 100% { opacity: 0; } }
 /* the shock front: a zigzag band (shape set in js) thrown out from the middle of the screen */
 .ix-burst { position: absolute; left: 50%; top: 50%; width: 60vmin; height: 60vmin; margin: -30vmin 0 0 -30vmin; opacity: 0; background: var(--n-ink); will-change: transform, opacity; }
 .ix-burst.r { background: var(--n-red); }
-.intro.ix-bam-on .ix-burst { animation: ix-burst 440ms cubic-bezier(.12, .7, .25, 1) var(--bam-delay, 0ms) forwards; }
-.intro.ix-bam-on .ix-burst.r { animation-name: ix-burst-r; animation-duration: 500ms; }
+.intro.ix-bam-fx .ix-burst { animation: ix-burst 440ms cubic-bezier(.12, .7, .25, 1) var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-fx .ix-burst.r { animation-name: ix-burst-r; animation-duration: 500ms; }
 @keyframes ix-burst { 0% { opacity: 1; transform: scale(.5) rotate(-10deg); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(6.4) rotate(4deg); } }
 @keyframes ix-burst-r { 0% { opacity: 1; transform: scale(.36) rotate(-10deg); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(4.9) rotate(4deg); } }
+/* action lines: ink wedges pointing in from the rim (shape set in js), four held frames */
+.ix-lines { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; opacity: 0; background: var(--n-ink); will-change: transform, opacity; }
+.intro.ix-bam-fx .ix-lines { animation: ix-lines 330ms step-end var(--bam-delay, 0ms) forwards; }
+@keyframes ix-lines {
+  0% { opacity: 1; transform: scale(1.95) rotate(0deg); } 25% { opacity: 1; transform: scale(2.65) rotate(5deg); }
+  50% { opacity: .85; transform: scale(3.6) rotate(-3deg); } 75% { opacity: .5; transform: scale(4.7) rotate(4deg); } 100% { opacity: 0; transform: scale(4.7); }
+}
+/* the starburst: ink outline, paper with a red dot screen, the teal and rose plates knocked out from behind it */
+.ix-pow {
+  --pw: min(calc(var(--vw) * 88), calc(var(--vh) * 66), 760px);
+  position: absolute; left: 50%; top: 50%; width: var(--pw); height: calc(var(--pw) * .78); margin: calc(var(--pw) * -.39) 0 0 calc(var(--pw) * -.5);
+  z-index: 12; opacity: 0; will-change: transform, opacity;      /* over the banner (which stays above the flash) */
+}
+.ix-pow i { position: absolute; inset: 0; }
+.ix-pow-k { background: var(--n-ink); }
+.ix-pow-p {
+  transform: scale(.93);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(195, 38, 28, .55) 0, rgba(195, 38, 28, .55) 32%, rgba(195, 38, 28, 0) 36%) 0 0 / calc(var(--pw) * .028) calc(var(--pw) * .028),
+    var(--n-paper);
+}
+.ix-pow-t { background: var(--n-teal); transform: translate(-3%, -2.4%); will-change: transform; }
+.ix-pow-r { background: var(--n-rose); transform: translate(3%, 2.6%); will-change: transform; }
+.ix-pow-word {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--n-scream); font-weight: 400; font-size: calc(var(--pw) * .34); line-height: 1; letter-spacing: .02em;
+  color: var(--n-red); -webkit-text-stroke: calc(var(--pw) * .008) var(--n-ink); paint-order: stroke fill;
+  text-shadow: calc(var(--pw) * .016) calc(var(--pw) * .016) 0 var(--n-ink);
+  transform: rotate(-6deg);
+}
+.intro.ix-bam-fx .ix-pow { animation: ix-pow 560ms step-end var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-fx .ix-pow-t { animation: ix-pow-t 560ms step-end var(--bam-delay, 0ms) forwards; }
+.intro.ix-bam-fx .ix-pow-r { animation: ix-pow-r 560ms step-end var(--bam-delay, 0ms) forwards; }
+@keyframes ix-pow {
+  0% { opacity: 1; transform: scale(.52) rotate(-15deg); }
+  11% { opacity: 1; transform: scale(1.2) rotate(-3deg); }
+  24% { opacity: 1; transform: scale(.97) rotate(-8deg); }
+  40% { opacity: 1; transform: scale(1.03) rotate(-6deg); }
+  56% { opacity: 1; transform: scale(1) rotate(-7deg); }
+  76% { opacity: 1; transform: scale(1.14) rotate(-4deg); }
+  88%, 100% { opacity: 0; transform: scale(1.14) rotate(-4deg); }
+}
+@keyframes ix-pow-t { 0% { transform: translate(-9%, -7%); } 11% { transform: translate(-7%, -5.4%); } 24% { transform: translate(-4.4%, -3.4%); } 40% { transform: translate(-3%, -2.4%); } 76%, 100% { transform: translate(-8%, -6%); } }
+@keyframes ix-pow-r { 0% { transform: translate(9%, 7.4%); } 11% { transform: translate(7%, 5.6%); } 24% { transform: translate(4.4%, 3.6%); } 40% { transform: translate(3%, 2.6%); } 76%, 100% { transform: translate(8%, 6.4%); } }
 /* scraps of paper and ink thrown from the middle */
 .ix-scrap { position: absolute; left: 50%; top: 50%; opacity: 0; background: var(--n-paper); outline: 1px solid rgba(21, 18, 13, .28); will-change: transform, opacity; }
 .ix-scrap.k { background: var(--n-ink); } .ix-scrap.r { background: var(--n-red); } .ix-scrap.p2 { background: var(--n-paper-3); }
 .ix-scrap.ln { background: repeating-linear-gradient(0deg, transparent 0, transparent 5px, rgba(21, 18, 13, .55) 5px, rgba(21, 18, 13, .55) 6.5px, transparent 6.5px, transparent 9px) 12% 50% / 76% 70% no-repeat, var(--n-paper); }
-.intro.ix-bam-on .ix-scrap { animation: ix-scrap var(--fd, 700ms) var(--bam-delay, 0ms) forwards; }
+.ix-scrap.d { border-radius: 50%; outline: 0; background: var(--n-ink); } .ix-scrap.dt { background: var(--n-teal); } .ix-scrap.dr { background: var(--n-rose); }
+.intro.ix-bam-fx .ix-scrap { animation: ix-scrap var(--fd, 700ms) var(--bam-delay, 0ms) forwards; }
 @keyframes ix-scrap {
   0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(.5); animation-timing-function: cubic-bezier(.1, .9, .3, 1); }
   12% { opacity: 1; transform: translate(calc(var(--fx) * .3), calc(var(--fy) * .3)) rotate(calc(var(--fr) * .3)) scale(1.1); animation-timing-function: cubic-bezier(.3, .5, .55, 1); }
@@ -366,10 +566,11 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .ix-skip.is-hot { border-color: var(--sk-fill, #4af626); }
 .intro[data-skin="paper"] .ix-skip { --sk-fg: var(--n-ink); --sk-bg: var(--n-paper); --sk-bd: var(--n-ink); --sk-fill: var(--n-red); --sk-fill-fg: var(--n-paper); font-family: var(--n-data); box-shadow: 2px 2px 0 rgba(0, 0, 0, .55); }
 
-/* ---------- 9. reduced motion: no tearing, no shake, no grain crawl (flashes are switched off in js) ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .ix-ghost, .ix-clip-photo::after { animation: none !important; }
-  .intro.ix-bam-on .ix-clips { animation: none !important; }
-  .ix-clip.ja, .ix-clip.jb { animation: none; }
-  .ix-sound { animation: none; }
-}
+/* ---------- 9. ?reduce: everything is still (the OS Reduce Motion setting is deliberately ignored; flashes and
+   reel turns are switched off in js). The sequence still runs to the drop; the stage is then simply gone. ---------- */
+html.reduce .ix-ghost, html.reduce .ix-sound, html.reduce .ix-prompt .cur::after, html.reduce .ix-clip, html.reduce .ix-clip-j, html.reduce .ix-plate,
+html.reduce .ix-card, html.reduce .ix-card [data-t]::before, html.reduce .ix-card [data-t]::after,
+html.reduce .ix-lit, html.reduce .ix-flap, html.reduce .ix-bloom, html.reduce .ix-clips, html.reduce .ix-banner,
+html.reduce .ix-burst, html.reduce .ix-lines, html.reduce .ix-pow, html.reduce .ix-pow i, html.reduce .ix-scrap, html.reduce .ix-white { animation: none !important; }
+html.reduce .ix-card.out { visibility: hidden; }
+html.reduce .intro.ix-bam-on .ix-stage { animation: ix-vanish 16ms linear var(--bam-delay, 0ms) forwards !important; }

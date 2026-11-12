@@ -246,7 +246,6 @@
   .ros__lines { column-gap: var(--sp-5); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ros__panel, .ros__row.is-open > .ros__panel, .ros__chev { transition: none; }
-  .ros__row.is-open .ros__plot .ros__bar { animation: none; }
-}
+/* motion-free variant: opt in with ?reduce (the OS Reduce Motion setting is deliberately ignored) */
+html.reduce .ros__panel, html.reduce .ros__row.is-open > .ros__panel, html.reduce .ros__chev { transition: none; }html.reduce .ros__row.is-open .ros__plot .ros__bar { animation: none; }
+

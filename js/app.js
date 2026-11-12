@@ -313,7 +313,7 @@
         h('div.masthead__edition',
           h('span', editionTitle),
           editionDate ? h('time', { datetime: EDITION.date }, editionDate) : null)),
-      h('nav.nav', { 'aria-label': 'Sections' }, shell.navLinks),
+      h('nav.nav', { 'aria-label': 'Sections' }, shell.navLinks, h('span.nav__slot#player-slot')),   // slot: the music button docks here (PLAYER.dock)
       shell.root
     ]);
   }
@@ -403,6 +403,8 @@
     booted = true;
     try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* ignore */ }
     buildShell();
+    try { if (window.PLAYER && typeof PLAYER.dock === 'function') PLAYER.dock(document.getElementById('player-slot')); }
+    catch (e) { console.error('[APP] PLAYER.dock failed', e); }
     wireTips();
     render();
     window.addEventListener('hashchange', render);

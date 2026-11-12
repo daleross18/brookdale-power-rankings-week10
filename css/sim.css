@@ -263,6 +263,6 @@
   .sim-sec--rest, .sim-sec--odds, .sim-sec--past { grid-column: 1 / -1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sim-slip, .sim-stage.is-landing .sim-result__paper { animation: none; }
-}
+/* motion-free variant: opt in with ?reduce (the OS Reduce Motion setting is deliberately ignored) */
+html.reduce .sim-slip, html.reduce .sim-stage.is-landing .sim-result__paper { animation: none; }
+

@@ -45,7 +45,7 @@
       h('span.st-id__name', APP.wbr(t.name)), withManager ? h('span.st-id__mgr', t.manager) : null);
   }
   function tipOn(el, title, lines) { return APP.tip(el, lines.filter(Boolean).join('\n'), title); }
-  function reduceMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  function reduceMotion() { return /[?&]reduce\b/.test(location.search); }   // OS Reduce Motion is deliberately ignored; ?reduce opts out
 
   // A table in its sideways scroll container, inside a box that shades its right / left edge while there is more
   // table in that direction. Returns the box; box.scroller is the scroll container.

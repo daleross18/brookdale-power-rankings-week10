@@ -1,0 +1,381 @@
+/* ============================================================================
+   clutter.css — the collage of print-shop debris around the content (built and placed by js/clutter.js).
+
+   LAYERS   .cl-layer--paper  one, last child of #app: everything on the newsprint (margins, gaps, bands)
+            .cl-layer--desk   one per .desk: everything on the cutting mat, under the clippings
+            Both are z-index:-1 inside their host's stacking context: above the host's background, below ALL of its
+            content. They are absolutely positioned, clipped, `contain: strict` and take no pointer events, so they
+            cannot shift layout, add scroll area or catch a tap.
+   .cl-r    region: a rectangle with no bare text in it, overflow hidden. Pieces are children of a region.
+   .cl-p    piece: position + tilt (--r).   .cl-b  its body: every animation runs on this (transform / opacity only).
+            .cl-alt  every other piece, chosen by the script: the other plate colour / the other hatched corner.
+   STATES   .cl-on (in the viewport)  .cl-off (ambient piece, resting)  .cl-pop / .cl-out (snap in / out)
+            .cl-gl (one glitch)  .cl-hot (pointer over it)  .cl-tap (tapped)  .cl-flip (a clip changing reel)
+            .cl-blank (a video clipping whose canvas has no picture yet: out of sight)
+   MOTION   on twos: steps(1, start) holds each keyframe pose (~85 ms). Off under html.reduce (never the OS setting).
+   ============================================================================ */
+
+/* ---------- hosts ---------- */
+body { isolation: isolate; }                 /* so the page layer's z-index:-1 stays above the body's paper */
+#app { position: relative; }
+.desk { position: relative; isolation: isolate; }
+
+.cl-layer {
+  --cl-mark: var(--ink);
+  --cl-k1: rgba(21, 18, 15, 1); --cl-k2: rgba(21, 18, 15, 0.68); --cl-k3: rgba(21, 18, 15, 0.42); --cl-k4: rgba(21, 18, 15, 0.2);
+  --cl-sh: 0 1px 1px rgba(0, 0, 0, 0.3), 0 5px 8px -3px rgba(0, 0, 0, 0.42);
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: -1;
+  overflow: hidden;
+  contain: strict;
+  -webkit-user-select: none; user-select: none;
+}
+@supports (overflow: clip) { .cl-layer { overflow: clip; } }
+.cl-layer--desk {
+  --cl-mark: rgba(235, 229, 213, 0.8);
+  --cl-k1: rgba(235, 229, 213, 1); --cl-k2: rgba(235, 229, 213, 0.68); --cl-k3: rgba(235, 229, 213, 0.42); --cl-k4: rgba(235, 229, 213, 0.2);
+  --cl-sh: 0 1px 2px rgba(0, 0, 0, 0.55), 0 7px 10px -3px rgba(0, 0, 0, 0.75);
+}
+.cl-layer, .cl-layer *, .cl-layer *::before, .cl-layer *::after { pointer-events: none !important; }
+html.intro-active .cl-layer, html.slamming .cl-layer, html.cl-stale .cl-layer { visibility: hidden; }
+html.cl-none .cl-layer { display: none; }
+
+.cl-r { position: absolute; overflow: hidden; contain: strict; }
+.cl-sents { position: absolute; left: 0; top: 0; width: 1px; height: 100%; }      /* one sentinel per band of the page: tells the script what is near the viewport */
+.cl-sent { position: absolute; left: 0; width: 1px; }
+.cl-p { position: absolute; transform: rotate(var(--r, 0deg)); contain: layout style; }
+.cl-b { position: relative; width: 100%; height: 100%; isolation: isolate; }
+.cl-off { visibility: hidden; }
+
+.cl-ink-k { color: var(--ink); }
+.cl-ink-r { color: var(--red); }
+.cl-ink-t { color: var(--fx-teal); }
+.cl-ink-s { color: var(--fx-rose); }
+.cl-ink-m { color: var(--fx-mustard); }
+.cl-ink-p { color: var(--paper-2); }
+
+/* ---------- video clippings and photo scraps ---------- */
+.cl-clip .cl-b::before, .cl-clip .cl-b::after,
+.cl-photo .cl-b::before, .cl-photo .cl-b::after {          /* the teal and rose plates, a few px out of register */
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: -1;
+}
+.cl-clip .cl-b::before, .cl-photo .cl-b::before { background: var(--fx-teal); transform: translate(-3px, 2px); }
+.cl-clip .cl-b::after, .cl-photo .cl-b::after { background: var(--fx-rose); transform: translate(3px, -2px); }
+.cl-photo .cl-b::before, .cl-photo .cl-b::after { clip-path: var(--tear); }
+
+.cl-frame {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  padding: 4.2% 4.2% 5.8%;
+  background: var(--paper-2) var(--tex-grain);
+  box-shadow: var(--cl-sh);
+}
+.cl-photo .cl-frame { padding: 0; background: #1b1814; box-shadow: none; clip-path: var(--tear); }
+.cl-screen {
+  position: relative; width: 100%; height: 100%; overflow: hidden;
+  background: #1b1814;
+  outline: 1px solid rgba(21, 18, 13, 0.55); outline-offset: -1px;
+}
+.cl-screen > canvas, .cl-screen > img {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none;
+  object-fit: cover;
+}
+.cl-screen > canvas { image-rendering: pixelated; filter: grayscale(1) contrast(1.5) brightness(1.12) sepia(0.22); }
+.cl-screen > img { object-position: 50% 28%; filter: grayscale(1) contrast(1.42) brightness(1.06) sepia(0.18); }
+.cl-screen::before {                                        /* the cutscene's print: a hatched corner over the dot screen */
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 75' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cpattern id='h' width='4.4' height='4.4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'%3E%3Crect width='1.5' height='4.4' fill='%2315120f' fill-opacity='.62'/%3E%3C/pattern%3E%3C/defs%3E%3Cpolygon points='100,36 100,75 52,75' fill='url(%23h)'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 50%, rgba(18, 14, 9, 0.5) 0, rgba(18, 14, 9, 0.5) 30%, rgba(18, 14, 9, 0) 34%);
+  background-size: 100% 100%, 3px 3px;
+}
+.cl-clip.cl-alt .cl-screen::before { transform: scale(-1, -1); }        /* the hatched corner: lower right on some, upper left on the others */
+.cl-photo .cl-screen::before { background-size: 100% 100%, 4px 4px; }       /* coarser screen on the stills */
+.cl-screen::after {                                         /* grain (the cutscene's) */
+  content: ""; position: absolute; left: -64px; top: -64px; right: -64px; bottom: -64px; z-index: 2;
+  background-image: var(--cl-grain); background-size: 128px 128px;
+  opacity: 0.55;
+}
+.cl-clip.cl-on .cl-screen::after { will-change: transform; animation: cl-grain 0.5s steps(1) infinite; }
+html:not(.cl-reel) .cl-clip, .cl-clip.cl-blank { visibility: hidden; }   /* no empty frames: while the reel loads (or if it never does), or before a canvas has its first picture */
+.cl-tp, .cl-tape .cl-b {
+  background: rgba(226, 214, 160, 0.66);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  clip-path: polygon(0 0, 3% 22%, 0 44%, 3% 68%, 0 100%, 100% 100%, 97% 76%, 100% 52%, 97% 28%, 100% 0);
+}
+.cl-tp { position: absolute; z-index: 3; width: 42%; height: 17%; }
+
+/* ---------- torn paper: data scraps, W / L chips, blank newsprint ---------- */
+.cl-sheet {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  clip-path: var(--tear);
+  background: var(--paper-2) var(--tex-grain);
+  color: var(--ink);
+}
+.cl-sheet--b { background: var(--tex-grain), var(--tex-blotch), var(--paper-3); }
+.cl-sheet--k { background: var(--ink) var(--tex-grain); color: var(--paper-2); }
+.cl-sheet--r { background: var(--red) var(--tex-grain); color: var(--paper-2); }
+.cl-scrap .cl-b::before, .cl-stamp .cl-b::before, .cl-paper .cl-b::before {      /* one plate showing at the torn edge */
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: -1;
+  clip-path: var(--tear);
+  background: var(--fx-teal); transform: translate(-2px, 2px);
+}
+:is(.cl-scrap, .cl-stamp, .cl-paper).cl-alt > .cl-b::before { background: var(--fx-rose); }   /* (.cl-alt is dealt by the script: no :nth-child, so adding a piece never restyles its neighbours) */
+.cl-scrap .cl-b::after, .cl-stamp .cl-b::after, .cl-paper .cl-b::after {         /* its shadow */
+  content: ""; position: absolute; left: 4px; top: 4px; right: 4px; bottom: 4px; z-index: -2;
+  box-shadow: var(--cl-sh);
+}
+
+.cl-t { position: relative; display: block; white-space: nowrap; line-height: 1; isolation: isolate; }
+.cl-t--score, .cl-t--tag, .cl-t--rank, .cl-t--stamp, .cl-t--wl { font-family: var(--f-scream); font-weight: 400; text-transform: uppercase; letter-spacing: 0.004em; }
+.cl-t--rank { color: var(--red); }
+.cl-t--record { font-family: var(--f-data); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; }
+.cl-t--code { font-family: var(--f-data); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; border: 1.5px solid currentColor; padding: 0.3em 0.44em 0.28em 0.56em; }
+.cl-t--week { font-family: var(--f-head); font-weight: 900; letter-spacing: -0.012em; }
+.cl-t--name { font-family: var(--f-head); font-weight: 800; letter-spacing: -0.01em; }
+.cl-t--mgr { font-family: var(--f-body); font-style: italic; font-weight: 500; }
+.cl-t[data-t]::before, .cl-t[data-t]::after {               /* misregistered type */
+  content: attr(data-t); position: absolute; left: 0; top: 0; z-index: -1;
+}
+.cl-t[data-t]::before { color: var(--fx-teal); transform: translate(-0.045em, 0.03em); }
+.cl-t[data-t]::after { color: var(--fx-rose); transform: translate(0.045em, -0.03em); }
+
+.cl-t--match {                                              /* a box score: week, winner, loser */
+  display: flex; flex-direction: column; align-items: stretch; gap: 0.2em;
+  font-family: var(--f-data); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; white-space: pre;
+}
+.cl-m__k { font-size: 0.68em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); padding-bottom: 0.26em; border-bottom: 1px solid currentColor; }
+.cl-m__a, .cl-m__b { display: flex; justify-content: space-between; gap: 0.7em; }
+.cl-m__b { color: var(--ink-3); }
+
+.cl-stamp .cl-t {
+  display: grid; place-items: center;
+  width: 74%; height: 74%;
+  border: 0.085em solid currentColor; border-radius: 50%;
+  font-family: var(--f-scream); font-weight: 400;
+}
+.cl-t--w { color: var(--good); }
+.cl-t--l { color: var(--bad); }
+.cl-t--t { color: var(--ink-2); }
+
+.cl-sheet--lines::before {                                  /* greeked columns: lines of type, no words */
+  content: ""; position: absolute; left: 9%; right: 9%; top: 27%; bottom: 12%;
+  background: repeating-linear-gradient(0deg, rgba(21, 18, 15, 0.36) 0 1.5px, transparent 1.5px 5.5px);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(var(--col, 60px) - 9px), transparent 0 var(--col, 60px));
+  mask: repeating-linear-gradient(90deg, #000 0 calc(var(--col, 60px) - 9px), transparent 0 var(--col, 60px));
+}
+.cl-sheet--lines::after { content: ""; position: absolute; left: 9%; top: 11%; width: 58%; height: 9%; max-height: 11px; background: rgba(21, 18, 15, 0.62); }
+
+/* ---------- impact graphics ---------- */
+.cl-burst .cl-b { display: grid; place-items: center; }
+.cl-burst .cl-b::before { content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: -1; clip-path: var(--star); background: var(--fx-teal); transform: translate(-3px, 3px); }
+.cl-burst__o, .cl-burst__i { position: absolute; clip-path: var(--star); }
+.cl-burst__o { left: 0; top: 0; right: 0; bottom: 0; background: var(--ink); }
+.cl-burst__i {
+  left: 5%; top: 5%; right: 5%; bottom: 5%;
+  background-color: var(--paper-2);
+  background-image: radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.24) 0 30%, transparent 34%);
+  background-size: 5px 5px;
+}
+.cl-burst__i--m { background-color: var(--fx-mustard); }
+.cl-burst__i--r { background-color: var(--red); }
+.cl-burst .cl-t { color: var(--ink); }
+.cl-burst__i--r ~ .cl-t { color: var(--paper-2); }
+.cl-burst .cl-t--rank { color: var(--red); }
+.cl-burst .cl-t--w { color: var(--good); }
+.cl-burst .cl-t--l { color: var(--bad); }
+
+.cl-ht .cl-b::before, .cl-ht .cl-b::after {                 /* halftone swatch: graded dots; ::after is the swollen screen */
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: currentColor;
+  -webkit-mask: var(--m) 0 0 / 100% 100% no-repeat; mask: var(--m) 0 0 / 100% 100% no-repeat;
+}
+.cl-ht .cl-b::after { -webkit-mask-image: var(--mb); mask-image: var(--mb); opacity: 0; }
+.cl-ht--1 { --m: var(--cl-ht1); --mb: var(--cl-ht1b); }
+.cl-ht--2 { --m: var(--cl-ht2); --mb: var(--cl-ht2b); }
+.cl-ht--3 { --m: var(--cl-ht3); --mb: var(--cl-ht3b); }
+
+.cl-hatch .cl-b { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px); }
+.cl-hatch--x .cl-b { background-image: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 6px), repeating-linear-gradient(45deg, currentColor 0 1.5px, transparent 1.5px 7px); }
+
+.cl-speed .cl-b {
+  background-image:
+    repeating-conic-gradient(from 0deg at 50% 100%, currentColor 0 1.1deg, transparent 1.1deg 5.5deg),
+    repeating-conic-gradient(from 2.4deg at 50% 100%, currentColor 0 0.6deg, transparent 0.6deg 9deg);
+  -webkit-mask: radial-gradient(circle at 50% 100%, transparent 0 34%, #000 36%); mask: radial-gradient(circle at 50% 100%, transparent 0 34%, #000 36%);
+}
+.cl-kirby .cl-b { background-repeat: no-repeat; }
+
+.cl-arrow .cl-b::before, .cl-arrow .cl-b::after {
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  clip-path: polygon(0 31%, 56% 27%, 53% 3%, 100% 49%, 55% 97%, 57% 71%, 2% 73%);
+}
+.cl-arrow .cl-b::before { background: var(--fx-teal); transform: translate(-3px, 3px); }
+.cl-arrow .cl-b::after { background: currentColor; }
+.cl-arrow.cl-ink-m .cl-b::before { background: var(--ink); }
+
+.cl-panel .cl-b {                                           /* an empty comic panel: ink outline, a screen inside, both plates out of register */
+  border: 2.5px solid var(--ink);
+  background: var(--paper-2) var(--tex-grain);
+  box-shadow: -3px 3px 0 var(--fx-teal), 3px -2px 0 var(--fx-rose);
+  overflow: hidden;
+}
+.cl-panel__in, .cl-panel__in::before, .cl-panel__in::after { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.cl-panel--ht .cl-panel__in { background: currentColor; -webkit-mask: var(--m) 0 0 / 100% 100% no-repeat; mask: var(--m) 0 0 / 100% 100% no-repeat; }
+.cl-panel--speed .cl-panel__in { background-image: repeating-conic-gradient(from 0deg at 10% 112%, var(--ink) 0 1.2deg, transparent 1.2deg 6deg); }
+.cl-panel--speed .cl-panel__in::after { content: ""; left: -20%; top: auto; right: auto; bottom: -34%; width: 62%; aspect-ratio: 1; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px var(--ink); }
+.cl-panel--hatch .cl-panel__in::before { content: ""; background-image: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 6px); clip-path: polygon(0 100%, 100% 18%, 100% 100%); }
+.cl-panel--hatch .cl-panel__in::after { content: ""; left: 12%; top: 14%; right: auto; bottom: auto; width: 28%; aspect-ratio: 1; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px var(--ink); }
+
+/* ---------- print-shop marks ---------- */
+.cl-reg .cl-b {
+  color: var(--cl-mark);
+  background:
+    linear-gradient(currentColor, currentColor) 50% 50% / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 50% 50% / 1.5px 100% no-repeat;
+}
+.cl-reg__o, .cl-reg .cl-b::before, .cl-reg .cl-b::after {
+  content: ""; position: absolute; left: 21%; top: 21%; right: 21%; bottom: 21%;
+  border: 1.5px solid currentColor; border-radius: 50%;
+}
+.cl-reg .cl-b::before { z-index: -1; border-color: var(--fx-teal); transform: translate(-2px, 1.5px); }
+.cl-reg .cl-b::after { z-index: -1; border-color: var(--fx-rose); transform: translate(2px, -1.5px); }
+.cl-crop .cl-b {
+  color: var(--cl-mark);
+  background:
+    linear-gradient(currentColor, currentColor) 0 68% / 46% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 68% 0 / 1.5px 46% no-repeat;
+}
+.cl-bars .cl-b {
+  background: linear-gradient(90deg, var(--cl-k1) 0 12.5%, var(--cl-k2) 0 25%, var(--cl-k3) 0 37.5%, var(--cl-k4) 0 50%, var(--fx-teal) 0 62.5%, var(--fx-rose) 0 75%, var(--fx-mustard) 0 87.5%, var(--red) 0);
+}
+.cl-ticks .cl-b {                                            /* a printer's rule: short ticks, a long one every fifth */
+  color: var(--cl-mark);
+  background:
+    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 6px) 0 100% / 100% 50% no-repeat,
+    repeating-linear-gradient(90deg, currentColor 0 1.5px, transparent 1.5px 30px);
+}
+.cl-spark .cl-b { background: currentColor; clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%); }
+.cl-slug .cl-b { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.cl-slug .cl-t { font-family: var(--f-data); font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; white-space: pre; color: var(--cl-mark); }
+.cl-proof .cl-b {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.16em;
+  color: var(--red);
+  border: 2px solid currentColor; outline: 1px solid currentColor; outline-offset: 2px;
+}
+.cl-layer--desk .cl-proof .cl-b { color: #d8483c; }
+.cl-proof .cl-t { font-family: var(--f-scream); font-weight: 400; text-transform: uppercase; letter-spacing: 0.035em; }
+.cl-t2 { display: block; font-family: var(--f-data); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1; white-space: nowrap; }
+
+/* ---------- motion (on twos) ---------- */
+@keyframes cl-grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-31px, 17px); } 40% { transform: translate(23px, -42px); }
+  60% { transform: translate(-48px, -9px); } 80% { transform: translate(39px, 33px); }
+}
+@keyframes cl-pop {
+  0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
+  34% { opacity: 1; transform: scale(1.18) rotate(5deg); }
+  67% { opacity: 1; transform: scale(0.93) rotate(-2deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes cl-out {
+  0% { opacity: 1; transform: none; }
+  34% { opacity: 1; transform: scale(1.12) rotate(4deg); }
+  67% { opacity: 1; transform: scale(0.72) rotate(-7deg); }
+  100% { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+}
+@keyframes cl-glitch {
+  0% { transform: none; }
+  20% { transform: translate(4px, -1px) skewX(-7deg); }
+  40% { transform: translate(-5px, 1px) skewX(5deg) scale(1.03); }
+  60% { transform: translate(2px, 2px) rotate(2deg); }
+  80% { transform: translate(-1px, -1px); }
+  100% { transform: none; }
+}
+@keyframes cl-flip {
+  0% { transform: scaleX(0.06); }
+  25% { transform: scaleX(0.06); }
+  50% { transform: scaleX(0.62) skewY(4deg); }
+  75% { transform: scaleX(1.07) skewY(-1deg); }
+  100% { transform: none; }
+}
+@keyframes cl-jit {
+  0%, 100% { transform: none; }
+  34% { transform: rotate(-2.4deg) translate(-1px, 1px); }
+  67% { transform: rotate(1.9deg) translate(1px, -1px) scale(1.035); }
+}
+@keyframes cl-stampdn {
+  0%, 100% { transform: none; }
+  25% { transform: scale(1.55) rotate(-9deg); }
+  50% { transform: scale(0.88) rotate(2deg); }
+  75% { transform: scale(1.05); }
+}
+@keyframes cl-turn {
+  0%, 100% { transform: none; }
+  25% { transform: scaleX(0.16); }
+  50% { transform: scaleX(-1); }
+  75% { transform: scaleX(-0.16); }
+}
+@keyframes cl-nudge {
+  0%, 100% { transform: none; }
+  34% { transform: translateX(9px) scale(1.06); }
+  67% { transform: translateX(-3px); }
+}
+@keyframes cl-burstpop {
+  0%, 100% { transform: none; }
+  34% { transform: scale(1.22) rotate(11deg); }
+  67% { transform: scale(0.94) rotate(-6deg); }
+}
+@keyframes cl-spin {
+  0%, 100% { transform: none; }
+  34% { transform: rotate(6deg) scale(1.08); }
+  67% { transform: rotate(-5deg); }
+}
+@keyframes cl-crackle {
+  0%, 100% { transform: none; }
+  34% { transform: scale(1.18) rotate(24deg); }
+  67% { transform: scale(0.9) rotate(-14deg); }
+}
+@keyframes cl-cross {
+  0%, 100% { transform: none; }
+  50% { transform: rotate(45deg) scale(1.15); }
+}
+@keyframes cl-swell { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes cl-plate-a {
+  0%, 100% { transform: translate(-3px, 2px); }
+  34% { transform: translate(-9px, 4px); }
+  67% { transform: translate(-5px, -4px); }
+}
+@keyframes cl-plate-b {
+  0%, 100% { transform: translate(3px, -2px); }
+  34% { transform: translate(8px, -5px); }
+  67% { transform: translate(6px, 4px); }
+}
+@keyframes cl-type-a { 0%, 100% { transform: translate(-0.045em, 0.03em); } 50% { transform: translate(-0.13em, 0.07em); } }
+@keyframes cl-type-b { 0%, 100% { transform: translate(0.045em, -0.03em); } 50% { transform: translate(0.12em, -0.08em); } }
+
+.cl-pop > .cl-b { animation: cl-pop 0.26s steps(1, start) var(--d, 0ms) both; }
+.cl-gl > .cl-b { animation: cl-glitch 0.42s steps(1, start) both; }
+.cl-flip > .cl-b { animation: cl-flip 0.36s steps(1, start) both; }
+
+/* hover (desktop) and tap (phones): each kind of piece has its own move */
+.cl-hot > .cl-b, .cl-tap > .cl-b { animation: cl-jit 0.36s steps(1, start) infinite; }
+.cl-stamp.cl-hot > .cl-b, .cl-stamp.cl-tap > .cl-b, .cl-proof.cl-hot > .cl-b, .cl-proof.cl-tap > .cl-b { animation-name: cl-stampdn; animation-duration: 0.56s; }
+.cl-ticks.cl-hot > .cl-b, .cl-ticks.cl-tap > .cl-b, .cl-bars.cl-hot > .cl-b, .cl-bars.cl-tap > .cl-b, .cl-tape.cl-hot > .cl-b, .cl-tape.cl-tap > .cl-b, .cl-slug.cl-hot > .cl-b, .cl-slug.cl-tap > .cl-b { animation-name: cl-turn; animation-duration: 0.48s; }
+.cl-arrow.cl-hot > .cl-b, .cl-arrow.cl-tap > .cl-b { animation-name: cl-nudge; }
+.cl-burst.cl-hot > .cl-b, .cl-burst.cl-tap > .cl-b { animation-name: cl-burstpop; }
+.cl-speed.cl-hot > .cl-b, .cl-speed.cl-tap > .cl-b, .cl-hatch.cl-hot > .cl-b, .cl-hatch.cl-tap > .cl-b, .cl-panel.cl-hot > .cl-b, .cl-panel.cl-tap > .cl-b { animation-name: cl-spin; }
+.cl-kirby.cl-hot > .cl-b, .cl-kirby.cl-tap > .cl-b, .cl-spark.cl-hot > .cl-b, .cl-spark.cl-tap > .cl-b { animation-name: cl-crackle; }
+.cl-reg.cl-hot > .cl-b, .cl-reg.cl-tap > .cl-b, .cl-crop.cl-hot > .cl-b, .cl-crop.cl-tap > .cl-b { animation-name: cl-cross; animation-duration: 0.34s; }
+.cl-ht.cl-hot > .cl-b::after, .cl-ht.cl-tap > .cl-b::after, .cl-ht.cl-gl > .cl-b::after { animation: cl-swell 0.34s steps(1, start) infinite; }
+/* the plates pull apart while a piece is hot or glitching */
+:is(.cl-clip, .cl-photo, .cl-scrap, .cl-stamp, .cl-paper, .cl-burst, .cl-arrow, .cl-reg):is(.cl-hot, .cl-tap, .cl-gl, .cl-flip) > .cl-b::before { animation: cl-plate-a 0.36s steps(1, start) infinite; }
+:is(.cl-clip, .cl-photo, .cl-reg):is(.cl-hot, .cl-tap, .cl-gl, .cl-flip) > .cl-b::after { animation: cl-plate-b 0.36s steps(1, start) infinite; }
+:is(.cl-hot, .cl-tap, .cl-gl) .cl-t[data-t]::before { animation: cl-type-a 0.34s steps(1, start) infinite; }
+:is(.cl-hot, .cl-tap, .cl-gl) .cl-t[data-t]::after { animation: cl-type-b 0.34s steps(1, start) infinite; }
+
+/* leaving wins over everything else */
+.cl-out > .cl-b { animation: cl-out 0.3s steps(1, start) both; }
+
+/* ?reduce: everything is still */
+html.reduce .cl-layer *, html.reduce .cl-layer *::before, html.reduce .cl-layer *::after { animation: none !important; }

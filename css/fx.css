@@ -1,0 +1,509 @@
+/* ============================================================================
+   fx.css — stage 3 print treatment of the EXISTING page elements (js/fx.js is its small helper).
+
+   THE LANGUAGE   One offset-printed comic, three plates on newsprint: black ink, a teal plate and a rose plate that
+                  sit a hair out of register, and a mustard screen for highlights.
+     PLATES   big type and solid ink blocks show a teal sliver on one side and a rose one on the other
+              (red type is rose + mustard, the two plates that print it). Subtle at rest — 1px, display type only,
+              never on text under ~24px; on hover the plates jump out from behind the ink and snap back.
+     SCREENS  shade is printed, never blurred: dot screens for the shadow a clipping casts, for photos, highlights,
+              the desk edge and the "more table this way" shades; 45deg hatch for the thin shadow of an inked box.
+     INK      clippings and photos carry an inked edge; boxes with an ink border cast a hatched shadow.
+     MARKS    a plate colour bar set into the thick rule of the masthead and of every section head, and one
+              registration mark in the edition line.
+
+   THE MOVES   all "on twos": held poses (steps(1)), 2–4 frames, 160–360ms. Large things move by transform only;
+               the rest are a few discrete repaints of one small box (color, background-position / -size,
+               outline-offset). None of them causes layout.
+     fx-sep      the colour plates jump out of register    big type, numerals, records, stat values (2 frames;
+                 behind the ink and snap back              the ink itself never moves or changes colour)
+     fx-sliver   the plate slivers of an ink block jump    primary buttons, the selected tab / nav cell
+     fx-grab     a clipping link is picked up              3 poses, then held lifted while hovered
+     fx-nudge    a loose clipping is knocked               2 poses, back to rest
+     fx-shade    the dot shadow jumps out from under it    with either of the two above
+     fx-plate / fx-swell   a photo glitches: its rose plate slips, a strip of each colour plate tears across it,
+                           and its dot screen swells
+     fx-snap     a dot highlight snaps in                  table rows, roster rows, buttons, tabs
+     fx-ring     a dotted ring snaps onto a cell           score cells, finish chips
+     fx-stroke   a red ink stroke is drawn in              links, nav, stat rules
+     fx-hatch    hatch lines are redrawn                   shadows of buttons, chips, bracket boxes
+     fx-reg / fx-bar / fx-band   the print marks tick round / along
+     fx-pop      the tooltip is slapped down
+
+   HOW A MOVE IS TRIGGERED   Every target is written once as  animation: var(--fxa-<move>, none) …  and a trigger
+     (section 7) only switches inherited custom properties on, on the element itself; its descendants inherit them
+     (a hovered clipping moves its own headline, numeral, record and photo). Triggers are :hover (inside
+     @media (hover: hover)), :focus-visible, and .fx-hit — the class js/fx.js holds on a pressed element for ~0.45s
+     on touch, where hover does not exist. Everything in section 7 sits under html:not(.reduce): with ?reduce nothing
+     moves (the held states of section 5 — dot highlight, ring, underline — still show, without animation).
+
+   RULES KEPT   nothing changes a box's size or position (front.js measures the headlines; neighbours never move);
+     no transform or filter on an ancestor of a sticky element (nav, pinned columns); animation declarations on
+     shared components use :where() so a view's own animation (sim-slap, st-open) and the WAAPI slam win over them;
+     text-shadow and filter are never animated (both re-lay out the text's clipping) — the type's jump is a
+     pseudo-element that only changes opacity and transform; pseudo-elements are only added where base.css and the
+     view sheets leave them free; every :hover rule sits inside @media (hover: hover), so nothing can stay stuck in
+     its hovered state after a tap.
+   ============================================================================ */
+
+/* ---------- 0. tokens ---------- */
+:root {
+  --fxp-teal: rgba(47, 143, 138, 0.82);
+  --fxp-rose: rgba(194, 69, 106, 0.74);
+  --fxp-must: rgba(217, 165, 33, 0.9);
+  /* row / cell highlight screen and its pitch */
+  --fxp-rowdots: radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.18) 0 30%, transparent 34%);
+  --fxp-must-dots: radial-gradient(circle at 50% 50%, rgba(217, 165, 33, 0.85) 0 32%, transparent 35%);
+  --fxp-hl-dots: radial-gradient(circle at 50% 50%, rgba(240, 212, 40, 0.95) 0 44%, transparent 47%);
+  --fxp-hatch: repeating-linear-gradient(135deg, rgba(21, 18, 15, 0.82) 0 1.2px, transparent 1.2px 3.8px);
+  --fxp-hatch-lt: repeating-linear-gradient(135deg, rgba(21, 18, 15, 0.4) 0 1.2px, transparent 1.2px 3.8px);
+  --fxp-step: steps(1, end);
+}
+
+/* ---------- 1. plates: misregistered type ---------- */
+/* ink type: teal to the left, rose to the right */
+:where(.masthead__name, .headline, .fp-clip__rec, .tm-card__rec, .st-mark__big, .hist-roll__year,
+       .section-head > span:first-child, .stat__value) {
+  --fxp-c1: var(--fxp-teal); --fxp-c2: var(--fxp-rose);
+  --fxp-o: max(1px, 0.019em);
+  text-shadow: calc(var(--fxp-o) * -1) 0 0 var(--fxp-c1), var(--fxp-o) calc(var(--fxp-o) * 0.45) 0 var(--fxp-c2);
+}
+/* red type is printed from the rose and yellow plates */
+:where(.fp-banner__kick, .fp-clip__num, .tm-card__num, .tm-wb__rec, .tm-foot__num, .tm-nav__no) {
+  --fxp-c1: var(--fxp-must); --fxp-c2: var(--fxp-rose);
+  --fxp-o: max(1px, 0.018em);
+  text-shadow: calc(var(--fxp-o) * -1) 0 0 var(--fxp-c1), var(--fxp-o) calc(var(--fxp-o) * 0.45) 0 var(--fxp-c2);
+}
+:where(.masthead__name) { --fxp-o: max(1px, 0.014em); }
+/* 24-30px serif heads: one plate only, on one side — two would read as blur at this size */
+:where(.section-head > span:first-child) { text-shadow: 1px 0.5px 0 rgba(194, 69, 106, 0.6); }
+:where(.stat__value) { text-shadow: none; }                          /* 24px figures: clean at rest, plates only in motion */
+:where(.tm-nav__no) { text-shadow: none; }
+
+/* The jump plate. js/fx.js copies the visible text of each piece of display type into data-fxt; ::before sets that
+   copy again, exactly over the type and behind its ink, as nothing but the two colour plates pulled far apart. It is
+   invisible at rest. fx-sep shows it for two held frames, so the ink stays put while the plates jump out of register
+   and slide; only opacity and transform change. Without the attribute (no JS, ?reduce) the type simply has no move. */
+:where([data-fxt]) { position: relative; isolation: isolate; }
+[data-fxt]::before {
+  content: attr(data-fxt);
+  content: attr(data-fxt) / "";               /* decorative: keep the copy out of the accessibility tree */
+  position: absolute; inset: 0; z-index: -1;
+  padding: inherit;
+  --fxp-j: min(max(3px, 0.055em), 7px);
+  color: transparent;
+  text-shadow: calc(var(--fxp-j) * -1) 0 0 var(--fxp-c1), var(--fxp-j) calc(var(--fxp-j) * 0.4) 0 var(--fxp-c2);
+  opacity: 0; transform: translate(0, 0);
+  pointer-events: none; -webkit-user-select: none; user-select: none;
+  animation: var(--fxa-sep, none) 0.26s var(--fxp-step);
+}
+:is(.fp-clip__rec, .tm-card__rec, .stat__value)[data-fxt]::before { animation-delay: 0.08s; }      /* the record lands a frame after the headline */
+html.reduce [data-fxt]::before { content: none; }
+
+/* solid ink blocks that mark the selected / primary thing: a sliver of each plate at the edges */
+.nav__link[aria-current="page"],
+.seg > [aria-selected="true"], .seg > [aria-pressed="true"], .seg > [aria-current], .seg > .is-on,
+.btn.btn--primary {
+  box-shadow: inset 2px 0 0 var(--fxp-teal), inset -2px 0 0 var(--fxp-rose);
+}
+.nav__link[aria-current="page"], .btn.btn--primary { animation: var(--fxa-sliver, none) 0.2s var(--fxp-step); }
+.seg > :is([aria-selected="true"], [aria-pressed="true"], [aria-current], .is-on) { animation: var(--fxa-sliver, none) 0.2s var(--fxp-step); }
+.tip-pop { box-shadow: -2px -2px 0 var(--fxp-teal), 3px 3px 0 var(--fxp-rose); transform: translate(0, 0); }      /* its own layer from the start: fx-pop then moves it without a layout */
+
+/* ---------- 2. screens ---------- */
+/* 2a. the shadow a clipping casts: a dot screen, slipped out to the lower right */
+.clipping { --fxp-shade: radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.62) 0 38%, transparent 41%); --fxp-sx: 6px; --fxp-sy: 7px; }
+.desk .clipping, .clipping.fp-clip__paper { --fxp-shade: radial-gradient(circle at 50% 50%, rgba(47, 143, 138, 0.9) 0 38%, transparent 41%); }
+.clipping::after {
+  inset: 0;
+  box-shadow: none;
+  background: var(--fxp-shade) 0 0 / 5px 5px;
+  transform: translate(var(--fxp-sx), var(--fxp-sy));
+  transition: none;
+}
+:where(.clipping)::after { animation: var(--fxa-shade, none) 0.3s var(--fxp-step) both; }
+.clipping.clipping--link:hover::after { box-shadow: none; }
+
+/* 2b. photos: a coarser screen, a harder black, and a rose plate under it */
+.news-photo { outline: 2px solid var(--ink); outline-offset: -2px; --fxp-b1: 21%; --fxp-b2: 63%; }
+.news-photo:not(.tm-meme__photo) img { filter: grayscale(1) brightness(var(--photo-gain, 1)) contrast(1.5) brightness(1.08); }
+.news-photo::before {                     /* the second plate: rose dots, a little out of register */
+  content: ""; position: absolute; inset: -8px; pointer-events: none;
+  /* the two solid layers are the glitch bands of fx-plate: strips of the teal and the rose plate, no size at rest */
+  background-image:
+    linear-gradient(#2f8f8a, #2f8f8a),
+    linear-gradient(#c2456a, #c2456a),
+    radial-gradient(circle at 50% 50%, rgba(194, 69, 106, 0.9) 0 30%, transparent 33%);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: 0 0, 0 0, 6px 6px;
+  background-position: 0 var(--fxp-b1), 0 var(--fxp-b2), 2px 1px;
+  mix-blend-mode: multiply;
+  opacity: 0.3;
+}
+.news-photo::after {
+  inset: -8px;
+  background-size: 5px 5px;
+  opacity: 1;
+}
+:where(.news-photo)::before { animation: var(--fxa-plate, none) 0.3s var(--fxp-step); }
+:where(.news-photo)::after { animation: var(--fxa-swell, none) 0.3s var(--fxp-step); }
+.news-photo--plain::before { display: none; }
+/* the bands sit at different heights from one picture to the next */
+:where(li:nth-child(3n + 2)) > * > * > .news-photo, .tm-meme__photo { --fxp-b1: 34%; --fxp-b2: 74%; }
+:where(li:nth-child(3n)) > * > * > .news-photo { --fxp-b1: 12%; --fxp-b2: 52%; }
+
+/* 2c. flat tints become screens */
+/* highlighter rows */
+.data tr.is-hl > * { background-color: rgba(246, 227, 79, 0.2); background-image: var(--fxp-hl-dots); background-size: 5px 5px; }
+.data--sticky tr.is-hl > :first-child { background-color: #ecdf8a; background-image: none; }
+.tm-wb__wk.is-met { background-color: rgba(246, 227, 79, 0.2); background-image: var(--fxp-hl-dots); background-size: 5px 5px; }
+.tm-wb__swatch { background-color: rgba(246, 227, 79, 0.2); background-image: var(--fxp-hl-dots); background-size: 5px 5px; }
+/* the empty part of a share bar */
+.bar {
+  background:
+    linear-gradient(var(--bar-ink, var(--ink)), var(--bar-ink, var(--ink))) 0 0 / var(--v, 0%) 100% no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.42) 0 30%, transparent 34%) 0 50% / 4px 4px;
+}
+/* playoff finishes in the year grid */
+.hist-fin--po { background: radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.25) 0 34%, transparent 38%) 0 0 / 4px 4px; }
+/* the "more table this way" shades: three columns of dots, shrinking */
+.st-box::after, .hist-box::after {
+  width: 15px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.55) 0 44%, transparent 47%) 100% 0 / 5px 5px repeat-y,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.5) 0 32%, transparent 35%) calc(100% - 5px) 2.5px / 5px 5px repeat-y,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.45) 0 20%, transparent 23%) calc(100% - 10px) 0 / 5px 5px repeat-y;
+}
+.st-box::before {
+  width: 15px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.5) 0 44%, transparent 47%) 0 0 / 5px 5px repeat-y,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.45) 0 32%, transparent 35%) 5px 2.5px / 5px 5px repeat-y,
+    radial-gradient(circle at 50% 50%, rgba(21, 18, 15, 0.4) 0 20%, transparent 23%) 10px 0 / 5px 5px repeat-y;
+}
+/* the playoff band of a chart (pattern element supplied by js/fx.js; flat tint without it) */
+.chart__band { fill: url(#fx-pat-band) rgba(21, 18, 15, 0.07); }
+
+/* 2d. the desk: a halftone bleeding in from its top edge (teal plate) and its bottom edge (rose plate) */
+.desk {
+  --fxp-dt: rgba(47, 143, 138, 0.5);
+  --fxp-db: rgba(194, 69, 106, 0.42);
+  background-image:
+    var(--tex-grain),
+    linear-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 5.4px, transparent 6px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 4.5px, transparent 5.1px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 3.6px, transparent 4.2px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 2.8px, transparent 3.4px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 1.3px, transparent 1.9px),
+    radial-gradient(circle at 50% 50%, var(--fxp-dt) 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 5.4px, transparent 6px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 4.4px, transparent 5px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 3.4px, transparent 4px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 1.5px, transparent 2.1px),
+    radial-gradient(circle at 50% 50%, var(--fxp-db) 0 0.7px, transparent 1.3px);
+  background-size:
+    240px 240px, 120px 120px, 120px 120px, 24px 24px, 24px 24px,
+    14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px,
+    14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px;
+  background-repeat:
+    repeat, repeat, repeat, repeat, repeat,
+    repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x,
+    repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x;
+  background-position:
+    0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px,
+    0 -7px, 7px 3px, 0 13px, 7px 23px, 0 33px, 7px 43px, 0 53px,
+    7px calc(100% + 7px), 0 calc(100% - 3px), 7px calc(100% - 13px), 0 calc(100% - 23px), 7px calc(100% - 33px), 0 calc(100% - 43px);
+}
+
+/* the team page's top desk carries its navigation on that edge: a lighter screen, and the step boxes stay solid */
+.tm-top { --fxp-dt: rgba(47, 143, 138, 0.3); }
+.tm-nav__step { background-color: var(--desk); }
+
+/* the banner strip: the two plates' dot screens run off its ends */
+.fp-banner {
+  background:
+    linear-gradient(90deg, rgba(221, 214, 196, 0) 0, var(--paper) 13%, var(--paper) 87%, rgba(221, 214, 196, 0) 100%),
+    radial-gradient(circle at 50% 50%, rgba(47, 143, 138, 0.75) 0 36%, transparent 39%) 0 0 / 7px 7px repeat,
+    var(--paper);
+  background-repeat: no-repeat, repeat, repeat;
+  background-size: 100% 100%, 7px 7px, auto;
+  animation: var(--fxa-band, none) 0.3s var(--fxp-step);
+}
+
+/* ---------- 3. ink ---------- */
+/* a clipping's cut edge is inked; the scissor cut eats into the line, so its weight wanders like a brush line */
+.clipping::before { box-shadow: inset 0 0 0 2.5px var(--ink); }
+
+/* inked boxes cast a hatched shadow */
+:where(.btn, .odds, .sim-tie, .seg) { position: relative; }
+.btn, .btn--sm { box-shadow: none; }
+.btn::after, .odds::after, .sim-tie::after, .seg:not(.seg--scroll)::after {
+  --fxp-d: 4px;
+  content: ""; position: absolute; pointer-events: none;
+  /* the box itself, moved down and right by --fxp-d (1.5px = its border), showing only where it clears the box */
+  inset: calc(var(--fxp-d) - 1.5px) calc(-1.5px - var(--fxp-d)) calc(-1.5px - var(--fxp-d)) calc(var(--fxp-d) - 1.5px);
+  clip-path: polygon(calc(100% - var(--fxp-d)) 0, 100% 0, 100% 100%, 0 100%, 0 calc(100% - var(--fxp-d)), calc(100% - var(--fxp-d)) calc(100% - var(--fxp-d)));
+  background: var(--fxp-hatch);
+  animation: var(--fxa-hatch, none) 0.24s var(--fxp-step);
+}
+.btn--sm::after, .odds::after, .seg:not(.seg--scroll)::after { --fxp-d: 3px; }
+.sim-tie--final::after { inset: 1px -7px -7px 1px; }      /* 3px border */
+.sim-tie.is-empty::after { background: var(--fxp-hatch-lt); }
+.btn--ghost::after, .btn[disabled]::after, .btn[aria-disabled="true"]::after { display: none; }
+.btn:active::after { opacity: 0; }
+
+/* ---------- 4. print-shop marks ---------- */
+/* the thick rule of the masthead and of every section head carries the plate colour bar */
+.masthead__edition, .section-head, .tm-wb__head {
+  --fxp-bar: linear-gradient(90deg, #2f8f8a 0 25%, #c2456a 25% 50%, #d9a521 50% 75%, var(--red) 75% 100%);
+  --fxp-bar-x: 100%;
+  border-top-color: transparent;
+  background:
+    var(--fxp-bar) var(--fxp-bar-x) 0 / 48px 3px no-repeat border-box,
+    linear-gradient(var(--ink), var(--ink)) 0 0 / 100% 3px no-repeat border-box;
+  animation: var(--fxa-bar, none) 0.3s var(--fxp-step);
+}
+.masthead__edition { --fxp-bar-x: 50%; background-size: 72px 3px, 100% 3px; }
+
+/* one registration mark, set between the edition title and the date */
+.masthead__edition > :last-child { order: 2; }
+.masthead__edition::after {
+  content: ""; order: 1; flex: none; align-self: center;
+  width: 13px; height: 13px;
+  background:
+    linear-gradient(var(--ink), var(--ink)) 50% 50% / 100% 1px no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 50% 50% / 1px 100% no-repeat,
+    radial-gradient(circle at 50% 50%, transparent 0 3px, var(--ink) 3.2px 4.2px, transparent 4.4px);
+  opacity: 0.85;
+  animation: var(--fxa-reg, none) 0.36s var(--fxp-step);
+}
+@media (max-width: 349px) { .masthead__edition::after { display: none; } }
+
+/* ---------- 5. held states (not motion: these stay with ?reduce too) ---------- */
+/* a hovered / pressed row: the dot screen instead of the flat tint */
+:where(.data tbody tr, .ros__btn, .hist-roll__row) {
+  background-image: var(--fxp-row, none); background-size: 5px 5px;
+  animation: var(--fxa-snap, none) 0.2s var(--fxp-step);
+}
+/* a roster row is a <button>: the reset's `background: none` and roster.css's own tints outrank :where() */
+.ros__btn { background-image: var(--fxp-row, none); background-size: 5px 5px; }
+.data.data--sticky > tbody > tr:not(.st-sheet-row) > :first-child {
+  background-image: var(--fxp-row, linear-gradient(transparent, transparent)), var(--tex-grain);
+  background-size: 5px 5px, auto;
+  animation: var(--fxa-snap-cell, none) 0.2s var(--fxp-step);
+}
+.st-sheet .data > tbody > tr > :first-child { background-image: none; animation: none; }
+@media (hover: hover) {
+  .data tbody tr:hover > * { background-color: transparent; }
+  .data.data--sticky > tbody > tr:not(.is-open):not(.st-sheet-row):hover > :first-child,
+  .st-table > tbody > tr:not(.st-sheet-row):not(.is-open):hover > td:first-child,
+  .st-grid > tbody > tr:hover > th:first-child {
+    background-color: var(--paper);
+    background-image: var(--fxp-row, linear-gradient(transparent, transparent)), var(--tex-grain);
+    background-size: 5px 5px, auto;
+  }
+  .st-sheet .data > tbody > tr:hover > :first-child { background: none; }
+  .data tr.is-hl:hover > * { background-color: rgba(246, 227, 79, 0.2); }
+  .data--sticky tr.is-hl:hover > :first-child { background-color: #ecdf8a; }
+  .data tbody tr:not(.st-sheet-row):hover, .ros__btn:not(:disabled):hover, .hist-roll__row:hover { --fxp-row: var(--fxp-rowdots); }
+  .ros__btn:not(:disabled):hover { background: var(--fxp-rowdots) 0 0 / 5px 5px; }
+
+  /* a hovered button or tab: highlighter, printed as a screen */
+  .btn:not(.btn--primary):not(.btn--red):not(.btn--ghost):hover, .seg > :not([aria-selected="true"]):not([aria-pressed="true"]):not([aria-current]):not(.is-on):hover {
+    background-image: var(--fxp-must-dots); background-size: 5px 5px;
+  }
+}
+.data tbody tr.fx-hit:not(.st-sheet-row), .ros__btn.fx-hit, .hist-roll__row.fx-hit { --fxp-row: var(--fxp-rowdots); }
+.ros__btn.fx-hit:not(:disabled) { background-image: var(--fxp-rowdots); background-size: 5px 5px; }
+.btn:not(.btn--primary):not(.btn--red):not(.btn--ghost), .seg > * { animation: var(--fxa-snap, none) 0.2s var(--fxp-step); }
+
+/* a score cell / a finish chip under the pointer: a dotted ring */
+.st-g__in, .hist-fin { outline: 2px dotted transparent; outline-offset: 0; animation: var(--fxa-ring, none) 0.2s var(--fxp-step); }
+@media (hover: hover) {
+  .st-g:hover .st-g__in, .hist-grid td:hover .hist-fin { outline-color: var(--red); }
+}
+.st-g:focus-visible .st-g__in, .st-g.fx-hit .st-g__in, .hist-grid td.fx-hit .hist-fin { outline-color: var(--red); }
+
+/* links: the underline is an ink stroke (drawn in by fx-stroke); at rest and with ?reduce it is simply there on hover */
+:where(.nav__link:not([aria-current="page"]), .data td.team a:not(.st-id), .data th.team a:not(.hist-link), .st-id__name, .hist-st__name,
+       .hist-at__who > span:first-child, .hist-link:not(.hist-st__id):not(.hist-at__who), .tm-read__opp a, .tm-nav__back) {
+  background-image: linear-gradient(var(--red), var(--red));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: var(--fxp-stroke, 0%) 2px;
+  animation: var(--fxa-stroke, none) 0.22s var(--fxp-step);
+}
+:where(.nav__link:not([aria-current="page"])) { background-position: 50% calc(50% + 0.82em); background-size: var(--fxp-stroke-nav, 0%) 2px; animation-name: var(--fxa-stroke-nav, none); }
+:where(.tm-nav__back) { background-position: 0 calc(50% + 0.85em); }
+/* a stat: a red stroke under its rule */
+.stat {
+  background: linear-gradient(var(--red), var(--red)) 0 0 / var(--fxp-stroke, 0%) 3px no-repeat;
+  animation: var(--fxa-stroke-stat, none) 0.22s var(--fxp-step);
+}
+@media (hover: hover) {
+  .data td.team a:hover, .data th.team a:hover, .hist-link:hover, .st-id:hover .st-id__name, .hist-st__id:hover .hist-st__name,
+  .hist-at__who:hover > span:first-child { text-decoration: none; }
+  :is(.data td.team a, .data th.team a, .st-id, .hist-link, .tm-read__opp a, .tm-nav__back, .stat):hover { --fxp-stroke: 100%; }
+  .nav__link:hover { --fxp-stroke-nav: calc(100% - 24px); }
+}
+:is(.data td.team a, .data th.team a, .st-id, .hist-link, .tm-read__opp a, .tm-nav__back, .stat):is(:focus-visible, .fx-hit) { --fxp-stroke: 100%; }
+.nav__link:is(:focus-visible, .fx-hit) { --fxp-stroke-nav: calc(100% - 24px); }
+
+/* a clipping link in the hand: its dot shadow sits further out */
+@media (hover: hover) { .clipping--link:hover { --fxp-sx: 10px; --fxp-sy: 12px; } }
+.clipping--link:is(:focus-visible, .fx-hit) { --fxp-sx: 10px; --fxp-sy: 12px; }
+
+/* ---------- 6. the moves ---------- */
+/* The colour plates jump out of register behind the ink, slide, and are gone (the jump plate of section 1). */
+@keyframes fx-sep {
+  0%   { opacity: 1; transform: translate(0, 0); }
+  40%  { opacity: 1; transform: translate(calc(var(--fxp-j) * 0.7), calc(var(--fxp-j) * -0.35)); }
+  75%, 100% { opacity: 0; transform: translate(0, 0); }
+}
+@keyframes fx-sliver {
+  0%   { box-shadow: inset 7px 0 0 var(--fxp-teal), inset -3px 0 0 var(--fxp-rose); }
+  50%  { box-shadow: inset 1px 0 0 var(--fxp-teal), inset -6px 0 0 var(--fxp-rose); }
+}
+@keyframes fx-grab {
+  0%   { transform: rotate(calc(var(--rot) * 0.25 - 1.1deg * var(--fxp-amp, 1))) translate(-3px, -7px) scale(1.02); }
+  34%  { transform: rotate(calc(var(--rot) * 0.25 + 0.8deg * var(--fxp-amp, 1))) translate(2px, -2px) scale(1.006); }
+  67%, 100% { transform: rotate(calc(var(--rot) * 0.25)) translate(0, -4px) scale(1.012); }
+}
+@keyframes fx-nudge {
+  0%   { transform: rotate(calc(var(--rot) + 0.7deg * var(--fxp-amp, 1))) translate(1px, -2px); }
+  40%  { transform: rotate(calc(var(--rot) - 0.45deg * var(--fxp-amp, 1))) translate(-1px, 1px); }
+  75%, 100% { transform: rotate(var(--rot)); }
+}
+@keyframes fx-shade {
+  0%   { transform: translate(calc(var(--fxp-sx) + 5px), calc(var(--fxp-sy) + 5px)); }
+  34%  { transform: translate(calc(var(--fxp-sx) - 3px), calc(var(--fxp-sy) - 3px)); }
+  67%, 100% { transform: translate(var(--fxp-sx), var(--fxp-sy)); }
+}
+/* a photo glitches: its rose plate slips, and a strip of each colour plate tears across it (3 poses) */
+@keyframes fx-plate {
+  0%   { transform: translate(-5px, 3px); opacity: 0.62; mix-blend-mode: normal;
+         background-size: 100% 13%, 100% 8%, 6px 6px;
+         background-position: -16px var(--fxp-b1), 14px var(--fxp-b2), 2px 1px; }
+  34%  { transform: translate(4px, -2px); opacity: 0.5; mix-blend-mode: normal;
+         background-size: 100% 6%, 100% 14%, 6px 6px;
+         background-position: 11px calc(var(--fxp-b1) + 11%), -12px calc(var(--fxp-b2) - 7%), 2px 1px; }
+  67%, 100% { transform: translate(0, 0); opacity: 0.3; background-size: 0 0, 0 0, 6px 6px; }
+}
+@keyframes fx-swell {
+  0%   { transform: scale(1.8); }
+  34%  { transform: scale(1.3) translate(2px, 1px); }
+  67%, 100% { transform: scale(1); }
+}
+@keyframes fx-snap {
+  0%   { background-size: 8px 8px; background-position: 2px 1px; }
+  50%  { background-size: 5px 5px; background-position: 2px 3px; }
+  100% { background-position: 0 0; }
+}
+@keyframes fx-snap-cell {
+  0%   { background-size: 8px 8px, auto; background-position: 2px 1px, 0 0; }
+  50%  { background-size: 5px 5px, auto; background-position: 2px 3px, 0 0; }
+  100% { background-position: 0 0, 0 0; }
+}
+@keyframes fx-ring {
+  0%   { outline-offset: 5px; }
+  50%  { outline-offset: -3px; }
+  100% { outline-offset: 0; }
+}
+@keyframes fx-stroke {
+  0%   { background-size: 22% 2px; }
+  34%  { background-size: 61% 2px; }
+  67%, 100% { background-size: 100% 2px; }
+}
+@keyframes fx-stroke-nav {
+  0%   { background-size: 18% 2px; }
+  34%  { background-size: 46% 2px; }
+  67%, 100% { background-size: calc(100% - 24px) 2px; }
+}
+@keyframes fx-stroke-stat {
+  0%   { background-size: 22% 3px; }
+  34%  { background-size: 61% 3px; }
+  67%, 100% { background-size: 100% 3px; }
+}
+@keyframes fx-hatch {
+  0%   { background-position: 2px 0; }
+  34%  { background-position: 4px 0; }
+  67%, 100% { background-position: 0 0; }
+}
+@keyframes fx-reg {
+  0%   { transform: rotate(30deg) scale(1.5); }
+  34%  { transform: rotate(60deg) scale(1.25); }
+  67%, 100% { transform: rotate(90deg); }
+}
+@keyframes fx-bar {
+  0%   { background-position: calc(var(--fxp-bar-x) - 12%) 0, 0 0; }
+  34%  { background-position: calc(var(--fxp-bar-x) - 30%) 0, 0 0; }
+  67%, 100% { background-position: var(--fxp-bar-x) 0, 0 0; }
+}
+@keyframes fx-band {
+  0%   { background-position: 0 0, 3px 2px, 0 0; }
+  34%  { background-position: 0 0, -2px 4px, 0 0; }
+  67%, 100% { background-position: 0 0, 0 0, 0 0; }
+}
+@keyframes fx-pop {
+  0%   { transform: translate(-3px, 3px) scale(0.94); }
+  50%  { transform: translate(1px, -1px) scale(1.03); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ---------- 7. triggers: hover (where hover exists), keyboard focus, and the pressed class from js/fx.js ---------- */
+/* boundaries: these answer only to their own trigger, not to a hovered ancestor (a stat inside a hovered clipping,
+   a table or a button inside a hovered row) */
+:where(.stat, .section-head, .tm-wb__head) { --fxa-sep: none; }
+:where(.data) { --fxp-row: none; --fxa-snap: none; --fxa-snap-cell: none; }
+:where(.data tbody tr > *) { --fxa-snap: none; }
+.clipping.clipping--link { transition: transform 0.12s steps(2, end); }      /* put down in two steps, not eased */
+:where(.clipping) { animation: var(--fxa-paper, none) 0.3s var(--fxp-step) both; }
+@media (max-width: 699px) { .clipping { --fxp-amp: 0.6; } }
+
+@media (hover: hover) {
+  html:not(.reduce) .clipping:hover { --fxa-paper: fx-nudge; --fxa-shade: fx-shade; --fxa-sep: fx-sep; --fxa-plate: fx-plate; --fxa-swell: fx-swell; }
+  html:not(.reduce) .clipping--link:hover { --fxa-paper: fx-grab; }
+  html:not(.reduce) .clipping--link:active { --fxa-paper: none; }            /* the press pose of base.css shows through */
+  html:not(.reduce) :is(.st-sheet__paper, .sim-slip, .sim-result__paper):hover { --fxa-shade: none; }      /* a sheet being read lies still; a slip with its own entrance takes no nudge, so its shadow must not jump alone */
+  html:not(.reduce) .news-photo:hover { --fxa-plate: fx-plate; --fxa-swell: fx-swell; }
+  html:not(.reduce) :is(.masthead, .fp-banner, .section-head, .tm-wb__head, .stat, .tm-nav__step, .hist-roll__row):hover { --fxa-sep: fx-sep; }
+  html:not(.reduce) .masthead:hover { --fxa-reg: fx-reg; --fxa-bar: fx-bar; }
+  html:not(.reduce) :is(.section-head, .tm-wb__head):hover { --fxa-bar: fx-bar; }
+  html:not(.reduce) .fp-banner:hover { --fxa-band: fx-band; }
+  html:not(.reduce) :is(.data tbody tr:not(.st-sheet-row), .ros__btn, .hist-roll__row, .btn, .seg > *):hover { --fxa-snap: fx-snap; --fxa-snap-cell: fx-snap-cell; }
+  html:not(.reduce) :is(.st-g, .hist-grid td):hover { --fxa-ring: fx-ring; }
+  html:not(.reduce) :is(.data td.team a, .data th.team a, .st-id, .hist-link, .tm-read__opp a, .tm-nav__back, .stat):hover { --fxa-stroke: fx-stroke; --fxa-stroke-stat: fx-stroke-stat; }
+  html:not(.reduce) .nav__link:hover { --fxa-stroke-nav: fx-stroke-nav; }
+  html:not(.reduce) :is(.btn, .odds, .sim-tie, .seg):hover { --fxa-hatch: fx-hatch; }
+  html:not(.reduce) :is(.btn--primary, .nav__link, .seg > *):hover { --fxa-sliver: fx-sliver; }
+}
+html:not(.reduce) .clipping:is(:focus-visible, .fx-hit) { --fxa-paper: fx-nudge; --fxa-shade: fx-shade; --fxa-sep: fx-sep; --fxa-plate: fx-plate; --fxa-swell: fx-swell; }
+html:not(.reduce) .clipping--link:is(:focus-visible, .fx-hit) { --fxa-paper: fx-grab; }
+html:not(.reduce) :is(.st-sheet__paper, .sim-slip, .sim-result__paper).fx-hit { --fxa-shade: none; }
+html:not(.reduce) .news-photo.fx-hit { --fxa-plate: fx-plate; --fxa-swell: fx-swell; }
+html:not(.reduce) :is(.masthead, .fp-banner, .section-head, .tm-wb__head, .stat, .tm-nav__step, .hist-roll__row):is(:focus-visible, .fx-hit) { --fxa-sep: fx-sep; }
+html:not(.reduce) .masthead.fx-hit { --fxa-reg: fx-reg; --fxa-bar: fx-bar; }
+html:not(.reduce) .masthead__name:focus-visible { --fxa-sep: fx-sep; }
+html:not(.reduce) :is(.section-head, .tm-wb__head).fx-hit { --fxa-bar: fx-bar; }
+html:not(.reduce) .fp-banner.fx-hit { --fxa-band: fx-band; }
+html:not(.reduce) :is(.data tbody tr:not(.st-sheet-row), .ros__btn, .hist-roll__row, .btn, .seg > *):is(:focus-visible, .fx-hit) { --fxa-snap: fx-snap; --fxa-snap-cell: fx-snap-cell; }
+html:not(.reduce) :is(.st-g, .hist-grid td):is(:focus-visible, .fx-hit) { --fxa-ring: fx-ring; }
+html:not(.reduce) :is(.data td.team a, .data th.team a, .st-id, .hist-link, .tm-read__opp a, .tm-nav__back, .stat):is(:focus-visible, .fx-hit) { --fxa-stroke: fx-stroke; --fxa-stroke-stat: fx-stroke-stat; }
+html:not(.reduce) .nav__link:is(:focus-visible, .fx-hit) { --fxa-stroke-nav: fx-stroke-nav; }
+html:not(.reduce) :is(.btn, .odds, .sim-tie, .seg):is(:focus-visible, .fx-hit) { --fxa-hatch: fx-hatch; }
+html:not(.reduce) :is(.btn--primary, .nav__link, .seg > *):is(:focus-visible, .fx-hit) { --fxa-sliver: fx-sliver; }
+
+/* while the front page slams in (APP.slam, ~1.2s) the clippings belong to that entrance: no move of ours on top */
+html.slamming .clipping:is(:hover, :focus-visible, .fx-hit) { --fxa-paper: none; --fxa-shade: none; --fxa-sep: none; --fxa-plate: none; --fxa-swell: none; }
+
+/* the tooltip snaps in */
+html:not(.reduce) .tip-pop:not([hidden]) { animation: fx-pop 0.16s var(--fxp-step); }
+
+/* ---------- 8. ?reduce: nothing moves ---------- */
+html.reduce .clipping.clipping--link { transition: none; }

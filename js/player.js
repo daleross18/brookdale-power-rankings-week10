@@ -10,7 +10,9 @@
 //  Playlist (after the intro, or on a deep link after the first interaction anywhere):
 //    jungle → money-for-nothing → gimme-shelter → sirius → loop, CFG.crossfade seconds of equal-power crossfade.
 //    A track that cannot be loaded is skipped; pressing play again retries everything.
-//  One small fixed play/pause button (.pdeck), the M key, pause when the tab is hidden / resume when visible.
+//  One small play/pause button (.pdeck), the M key, pause when the tab is hidden / resume when visible.
+//    PLAYER.dock(el) moves the button into el and restyles it as a cell of the sticky nav (js/app.js calls it at boot
+//    with its #player-slot). Never docked (e.g. _intro.html): it floats, fixed bottom-right.
 //  Headset / media-key / lock-screen play and pause go through the same play() and pause().
 //  The button and the M key are inert while <html> has class 'intro-active' (the cutscene owns the sound then).
 //
@@ -27,6 +29,8 @@
 //    PLAYER.latency()                seconds between an element's currentTime and what is heard through WebAudio (capped)
 //    PLAYER.handoff()                cutscene is over: the playlist, the button and the M key take over
 //    PLAYER.play() / pause() / toggle() / isPlaying()
+//  API used by app.js:
+//    PLAYER.dock(slotEl)             see above
 // ============================================================================
 (function () {
   'use strict';
@@ -454,16 +458,39 @@
     '.pdeck-ico::before{left:0}.pdeck-ico::after{right:0}' +
     '.pdeck[aria-pressed="false"] .pdeck-ico::before{width:auto;right:0;background:none;border-left:11px solid currentColor;border-top:6px solid transparent;border-bottom:6px solid transparent}' +
     '.pdeck[aria-pressed="false"] .pdeck-ico::after{display:none}' +
-    'html.intro-active .pdeck{display:none}';
+    '.pdeck-note{display:block;width:15px;height:15px;flex:none;fill:currentColor}' +
+    // docked in the nav (PLAYER.dock): a nav cell — full height, icons only, ink on the nav's paper
+    '.pdeck.pdeck--nav{position:static;z-index:auto;align-self:stretch;height:auto;min-height:var(--nav-h,46px);min-width:46px;padding:0 11px;gap:7px;' +
+      'color:var(--ink,#15120f);background:transparent;border:0;box-shadow:none}' +
+    '.pdeck.pdeck--nav:hover{background:transparent}' +
+    '@media (hover:hover){.pdeck.pdeck--nav:hover{color:var(--red,#c3261c)}}' +                 // (a tap must not leave it red)
+    '.pdeck.pdeck--nav:active{transform:none;color:var(--paper-2,#ebe5d5);background:var(--ink,#15120f)}' +
+    '.pdeck.pdeck--nav:focus-visible{outline:2px solid var(--red,#c3261c);outline-offset:-4px}' +
+    '.pdeck--nav[aria-pressed="true"] .pdeck-note{color:var(--red,#c3261c)}' +          // playing: the note is printed in the spot red
+    '.pdeck--nav[aria-pressed="true"]:active .pdeck-note{color:inherit}' +
+    '@media (max-width:359px){.pdeck.pdeck--nav{padding:0 9px;gap:5px}}' +
+    'html.intro-active .pdeck:not(.pdeck--nav){display:none}';
   var style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
   var btn = document.createElement('button');
   btn.type = 'button'; btn.className = 'pdeck';
   btn.setAttribute('aria-label', 'Play or pause music'); btn.title = 'Play / pause  [M]';
-  var note = document.createElement('span'); note.setAttribute('aria-hidden', 'true'); note.textContent = '♫';
+  var SVG = 'http://www.w3.org/2000/svg';
+  var note = document.createElementNS(SVG, 'svg'), notePath = document.createElementNS(SVG, 'path');   // beamed eighth notes (drawn, so no font decides what it looks like)
+  note.setAttribute('class', 'pdeck-note'); note.setAttribute('viewBox', '0 0 16 16'); note.setAttribute('aria-hidden', 'true'); note.setAttribute('focusable', 'false');
+  notePath.setAttribute('d', 'M5.6 2.5 14.2 1v9.7a2.5 2.2 0 1 1-1.6-2.05V4.2L7.2 5.15v6.75a2.5 2.2 0 1 1-1.6-2.05z');
+  note.appendChild(notePath);
   var ico = document.createElement('span'); ico.className = 'pdeck-ico'; ico.setAttribute('aria-hidden', 'true');
   btn.appendChild(note); btn.appendChild(ico);
   function mount() { if (!btn.parentNode) document.body.appendChild(btn); render(); }
+  /** Move the button into `slot` (the nav's #player-slot) as a nav cell. Without a slot it stays where it is. */
+  function dock(slot) {
+    if (!slot || !slot.appendChild) return false;
+    btn.classList.add('pdeck--nav');
+    if (btn.parentNode !== slot) slot.appendChild(btn);
+    render();
+    return true;
+  }
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   function render() { btn.setAttribute('aria-pressed', isPlaying() ? 'true' : 'false'); }
 
@@ -508,7 +535,7 @@
     staticOn: staticOn, staticLevel: staticLevel, staticOff: staticOff, blip: blip,
     cameraOn: cameraOn, cameraOff: cameraOff,
     latency: latency, handoff: handoff,
-    play: play, pause: pause, toggle: toggle, isPlaying: isPlaying,
+    play: play, pause: pause, toggle: toggle, isPlaying: isPlaying, dock: dock,
     _debug: function () {
       return { ctx: ctx ? ctx.state : null, cur: cur, started: started, owned: owned, userPaused: userPaused, xfade: !!xfade,
         camera: !!cameraSrc, cameraBuf: !!cameraBuf, graph: USE_GRAPH,

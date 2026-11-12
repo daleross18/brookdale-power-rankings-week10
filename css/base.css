@@ -235,7 +235,7 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 
 .nav {
   position: sticky; top: 0; z-index: 40;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr) auto;
   background: var(--paper) var(--tex-grain);
   border-top: 1px solid var(--ink);
   border-bottom: 2px solid var(--ink);
@@ -256,6 +256,8 @@ html.intro-active, html.intro-active body { overflow: hidden; }
 .nav__link[aria-current="page"] { background: var(--ink); color: var(--paper-2); border-left-color: var(--ink); }
 .nav__link[aria-current="page"] + .nav__link { border-left-color: var(--ink); }
 .nav__link:focus-visible { outline-offset: -4px; }
+.nav__slot { display: flex; align-items: stretch; border-left: 1px solid var(--rule); }   /* the music button docks here (js/player.js PLAYER.dock) */
+.nav__slot:empty { display: none; }
 @media (max-width: 359px) { .nav__link { font-size: 0.8125rem; } }
 
 .view { flex: 1 0 auto; display: flow-root; padding-bottom: 88px; min-width: 0; }
@@ -667,6 +669,6 @@ th[aria-sort] { color: var(--ink); }
 .bar--bad { --bar-ink: var(--bad); }
 
 /* ---------- 12. motion preferences ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .clipping--link, .clipping::after, .btn { transition: none; }
-}
+/* motion-free variant: opt in with ?reduce (the OS Reduce Motion setting is deliberately ignored) */
+html.reduce .clipping--link, html.reduce .clipping::after, html.reduce .btn { transition: none; }
+

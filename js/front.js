@@ -139,7 +139,7 @@
   function slam() {
     if (!state) return;
     clearSlam();
-    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reduce = /[?&]reduce\b/.test(location.search);   // OS Reduce Motion is deliberately ignored; ?reduce opts out
     var papers = Array.prototype.slice.call(state.list.querySelectorAll('.fp-clip__paper'));
     if (reduce || !papers.length || typeof papers[0].animate !== 'function') return;
 

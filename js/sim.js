@@ -49,7 +49,7 @@
   // ---------- small helpers ----------
   function teamName(slug) { var t = APP.team(slug); return t ? t.name : String(slug || ''); }
   function recText(r) { return r.w + '-' + r.l + (r.t ? '-' + r.t : ''); }
-  function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function reduced() { return /[?&]reduce\b/.test(location.search); }   // OS Reduce Motion is deliberately ignored; ?reduce opts out
   function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
   function parseSeed(v) {
     if (v == null) return null;

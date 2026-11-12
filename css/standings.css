@@ -118,7 +118,9 @@
 }
 .st-sheet__paper { --clip-pad: 16px; animation: st-open 0.18s cubic-bezier(0.2, 0.7, 0.3, 1); transform-origin: 50% 0; }
 @keyframes st-open { from { opacity: 0; transform: translateY(-8px); } }
-@media (prefers-reduced-motion: reduce) { .st-sheet__paper { animation: none; } }
+/* motion-free variant: opt in with ?reduce (the OS Reduce Motion setting is deliberately ignored) */
+html.reduce .st-sheet__paper { animation: none; }
+
 
 .st-sheet__head {
   display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px;
@@ -189,7 +191,9 @@ html.st-lock { overflow: hidden; }
 .st-modal .st-sheet__acts .btn { padding: 0 10px; }
 @keyframes st-fade { from { opacity: 0; } }
 @keyframes st-rise { from { transform: translateY(40%); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .st-modal__shade, .st-modal__panel { animation: none; } }
+/* motion-free variant: opt in with ?reduce (the OS Reduce Motion setting is deliberately ignored) */
+html.reduce .st-modal__shade, html.reduce .st-modal__panel { animation: none; }
+
 
 /* ---------- season marks ---------- */
 .st-desk { margin-top: var(--sp-7); padding: 30px var(--gutter) 36px; }
