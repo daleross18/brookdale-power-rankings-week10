@@ -62,10 +62,22 @@
     lastHover = now;
     try { burst(a, a.ctx.currentTime, vary(3100, 0.09), 1.6, 0.035, 0.75); count.hover++; } catch (e) { /* no sound */ }
   }
-  function press() {
+  // The press that unlocks the sound (the play button of the cutscene, or the first click on a page opened without it)
+  // comes before there is a running context: it is tried again for a moment, so that press clacks too.
+  var retry = 0;
+  function pressSoon(from, n) {
+    clearTimeout(retry);
+    retry = setTimeout(function () {
+      retry = 0;
+      if (audio()) press(true);
+      else if (n < 5 && performance.now() - from < 700) pressSoon(from, n + 1);
+    }, 90);
+  }
+  function press(again) {
     var now = performance.now();
     if (now - lastPress < PRESS_GAP) return;
-    var a = audio(); if (!a) return;
+    var a = audio();
+    if (!a) { var P = window.PLAYER, pa = P && typeof P.audio === 'function' ? P.audio() : null; if (again !== true && !(pa && pa.paused)) pressSoon(now, 0); return; }
     lastPress = now;
     try {
       var ctx = a.ctx, t = ctx.currentTime;
